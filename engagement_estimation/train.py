@@ -88,6 +88,8 @@ def train_individualized_model(df_data,
             
             model, result = models.sklearn(train_data, train_labels, test_data, test_labels, classifier)
             result['Participant'] = p
+            result['Train'] = "{} ({})".format(p, int(tr_percentage*100))
+            result['Test'] = "{} ({})".format(p, int((1-tr_percentage)*100))    
 
             all_results.append(result)
             
@@ -118,8 +120,8 @@ def train(config_path, logdir="./logs"):
     df_data_copy = df_data[features].copy()
 
     mean_results = {}
-    for model_type in model_types:
-        mean_results[model_type] = []
+    for i,model_type in enumerate(model_types):
+        mean_results[model_type] = {}
         for clf_name in classifiers:
             if "random_forest" in clf_name:
                 clf = ensemble.RandomForestClassifier(n_estimators=100,
@@ -156,7 +158,10 @@ def train(config_path, logdir="./logs"):
             clf_result_pd = clf_result_pd.append(clf_results, ignore_index=True, sort=False).round(3)
             clf_result_pd.to_csv("{}/{}_{}.csv".format(logdir, model_type, clf_name), index=False)
 
-            mean_results[model_type].append(round(clf_result_pd.AUROC.mean(),2))
+            mean_results[model_type][clf_name] = round(clf_result_pd.AUROC.mean()*100,2)
+        
+        # plot results
+        utils.plot_pies(mean_results[model_type], cmap_idx=i, name=model_type)
             
 
 if __name__ == '__main__':
