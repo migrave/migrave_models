@@ -137,3 +137,32 @@ def split_individualized_data(dataframe,
     train_data, test_data, mean, std = standardize_data(train_data, test_data)
     
     return train_data, train_labels, test_data, test_labels, mean, std
+
+def plot_pies(results, cmap_idx=0, name="no_name", imdir="./logs/images"):
+    """
+    Input: a dictionary of results with classifiers as keys
+    """
+    if not os.path.exists(imdir):
+        os.makedirs(imdir)
+        
+    fig, ax = plt.subplots()
+    size = 0.3
+    cmap = plt.get_cmap("BrBG")
+    
+    # reorder results based on auroc
+    results = dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
+    num_of_plots = len(results)
+    colors = [np.arange(0,num_of_plots)*16, np.flip(np.arange(11,17)*16)][cmap_idx]
+    legend_names = ["_Hidden"]*num_of_plots*2
+    for i,clf in enumerate(results.keys()):
+        ax.pie([100-results[clf], results[clf]], radius=2-i*size, 
+                colors=cmap([128,colors[i]]), startangle=90,
+                wedgeprops=dict(width=size, edgecolor='w'))
+        legend_names[i+i+1] = clf + f" ({results[clf]}%)"
+
+    ax.set(aspect="equal")
+    plt.rcParams['font.size'] = 14
+    plt.title(f"AUROC on {name} models", y=1.35)
+    plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
+    plt.savefig(os.path.join(imdir, name+".png"), bbox_inches='tight')
+    plt.show()
