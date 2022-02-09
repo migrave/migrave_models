@@ -4,6 +4,7 @@ import utils
 import argparse
 import pandas as pd
 import numpy as np
+import warnings
 
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
@@ -17,9 +18,9 @@ import sklearn.svm as svm
 import sklearn.linear_model as linear_model
 from xgboost import XGBClassifier
 
-import warnings
-warnings.filterwarnings('ignore')
+__author__ = "Mohammad Wasil"
 
+warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='./config/config.yaml', help='Config file')
 
@@ -39,6 +40,13 @@ def train_generalized_model(df_data,
                             logdir="./logs"):
     """
     Train generalized model: leave one out for test
+    Input:
+      df_data: dataset in panda's dataframe format
+      classifier: classifier used for training
+      participats: labels
+      logdir: directory to save the model
+    Return:
+      Dictionary containing the results
     """
     all_results = []
     for p in participants:
@@ -71,6 +79,14 @@ def train_individualized_model(df_data,
     """
     Train individualized model: train one model for each participant
     starting from 10% of train data, and increment by 10% until 90% according to the paper
+    Input:
+      df_data: dataset in panda's dataframe format
+      classifier: classifier used for training
+      participats: labels
+      train_percentage: a list of percentages used for training the model
+      logdir: directory to save the model
+    Return:
+      Dictionary containing the results
     """
     all_results = []
     for p in participants:
@@ -102,6 +118,12 @@ def train_individualized_model(df_data,
     return all_results
   
 def train(config_path, logdir="./logs"):
+    """
+    Helper function for training the model
+    Input:
+      config_path: path to the config file
+      logdir: directory where to store logs
+    """
     
     if not os.path.exists(logdir):
         os.makedirs(logdir)
@@ -114,6 +136,7 @@ def train(config_path, logdir="./logs"):
     classifiers = config["engagement"]["models"]
     model_types = config["engagement"]["model_types"]
     dataset_file = os.path.join("dataset", config["engagement"]["dataset"])
+    labels = config["engagement"]["labels"]
     df_data = pd.read_csv(dataset_file)
 
     features = NON_FEATURES_COLS + MIGRAVE_VISUAL_FEATURES
@@ -144,12 +167,21 @@ def train(config_path, logdir="./logs"):
                 clf = naive_bayes.GaussianNB()
             elif "logistic_regression" in clf_name:
                 clf = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
+            else:
+                print(f"Classifier {clf_name} is not recognized")
+                return
 
             print(f"Training {clf_name} on {model_type} data")
             if "generalized" in model_type:
-                clf_results = train_generalized_model(df_data_copy, clf, logdir=logdir)
+                clf_results = train_generalized_model(df_data_copy, 
+                                                      clf,
+                                                      participants=labels,
+                                                      logdir=logdir)
             elif "individualized" in model_type:
-                clf_results = train_individualized_model(df_data_copy, clf, logdir=logdir)
+                clf_results = train_individualized_model(df_data_copy, 
+                                                         clf,
+                                                         participants=labels,
+                                                         logdir=logdir)
 
             # save results
             clf_result_pd = pd.DataFrame(columns=['Train', 'Test', 'Accuracy', 
