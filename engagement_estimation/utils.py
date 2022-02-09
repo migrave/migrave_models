@@ -31,6 +31,13 @@ NAN_MAX_COLS = ['of_gaze_0_x',
                 'of_pose_distance']
 
 def parse_yaml_config(config_file):
+    """
+    Parse yaml config
+    Input:
+      config_file: yaml file to parse
+    Return:
+      Dictionary of the given yaml file
+    """
     if config_file and os.path.isfile(config_file):
         configs = {}
         with open(config_file, 'r') as infile:
@@ -41,14 +48,27 @@ def parse_yaml_config(config_file):
         print("Config not found or not given")
 
 def save_classifier(classifier, mean, std, classifier_name):
+    """
+    Save classifier
+    Input:
+      classifier: classifier to save
+      mean: mean of train data
+      std: standar dev of train data
+      classifier_name: file name of the classifier
+    """
     with open(classifier_name, 'wb') as f:
         joblib.dump([classifier, mean, std], f, protocol=2)
 
+# Some codes are based on
+# https://github.com/interaction-lab/exp_engagement/tree/master/Models
 def standardize_data(train_data, test_data):
     """
-    standardized data and fill nan with max value in the corr. col
-    input: Raw train_data and test_data (in pandas dataframe format)
-    output: standarfized train_data and test_data
+    Standardized data and fill nan with max value in the corr. col
+    input: 
+      train_data: train data in pd dataframe format
+      test_data: test data in pd dataframe format
+    Return: 
+      standarfized train_data and test_data
     """
     train_data_mean = []
     train_data_std = []
@@ -81,7 +101,7 @@ def standardize_data(train_data, test_data):
 
 def split_generalized_data(dataframe, idx, non_feature_cols=None):
     """
-    train on one of the user, and test for others
+    Train on other users
     Input:
         dataframe: dataset
         idx: Index of participat to be used as test set
@@ -115,7 +135,15 @@ def split_individualized_data(dataframe,
                               idx,
                               train_percentage,
                               non_feature_cols=None):
-    
+    """
+    Train on a subset of user data
+    Input:
+        dataframe: dataset
+        idx: Index of participat to be trained on
+        train_percentage: a list of train percentage
+    Return:
+        train_data, train_labels, test_data, test_labels, train_data_mean, train_data_std
+    """
     data = dataframe.loc[dataframe["participant"] == idx].copy()
         
     # before split, sort value based on session_num and timestamp
@@ -140,7 +168,12 @@ def split_individualized_data(dataframe,
 
 def plot_pies(results, cmap_idx=0, name="no_name", imdir="./logs/images"):
     """
-    Input: a dictionary of results with classifiers as keys
+    Input: 
+      result: a dictionary containing mean AUROC for each model trained on
+              individualized and generalized models
+      cmap_idx: 0 or 1 (0 represents 0-127 BrBG cmap and 1 represents 128-255 BrBG cmap)
+      name: name of the file
+      imdir: directory where to store the image
     """
     if not os.path.exists(imdir):
         os.makedirs(imdir)
