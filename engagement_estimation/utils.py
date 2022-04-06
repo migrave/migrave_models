@@ -1,11 +1,12 @@
 import os
-import yaml
+
 import joblib
-import pandas as pd
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
-import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import yaml
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -166,7 +167,7 @@ def split_individualized_data(dataframe,
     
     return train_data, train_labels, test_data, test_labels, mean, std
 
-def plot_pies(results, cmap_idx=0, name="no_name", imdir="./logs/images"):
+def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
     """
     Input: 
       result: a dictionary containing mean AUROC for each model trained on
@@ -198,4 +199,5 @@ def plot_pies(results, cmap_idx=0, name="no_name", imdir="./logs/images"):
     plt.title(f"AUROC on {name} models", y=1.35)
     plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
     plt.savefig(os.path.join(imdir, name+".png"), bbox_inches='tight')
-    plt.show()
+    if show:
+        plt.show()
