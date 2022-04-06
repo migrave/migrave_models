@@ -9,5 +9,4 @@ engagement:
     - knn
     - naive_bayes
     - logistic_regression
-  dataset: migrave_all.csv
-  labels: [1,2,3,4]
+  dataset: migrave_engagement_data_small.csv
