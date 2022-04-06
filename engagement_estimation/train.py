@@ -56,8 +56,11 @@ def train_generalized_model(df_data,
 
         train_data, train_labels, test_data, test_labels, mean, std = utils.split_generalized_data(df_data, 
                                                                                   idx=p)
-        
-        model, result = models.sklearn(train_data, train_labels, test_data, test_labels, classifier)
+        model, result = models.sklearn(train_data.values,
+                                       train_labels.values,
+                                       test_data.values,
+                                       test_labels.values,
+                                       classifier)
         result['Train'] = ", ".join(str(x) for x in participants if x != p)
         result['Test'] = p
 
@@ -102,7 +105,11 @@ def train_individualized_model(df_data,
                                                                               idx=p,
                                                                               train_percentage=tr_percentage)
             
-            model, result = models.sklearn(train_data, train_labels, test_data, test_labels, classifier)
+            model, result = models.sklearn(train_data.values,
+                                           train_labels.values,
+                                           test_data.values,
+                                           test_labels.values,
+                                           classifier)
             result['Participant'] = p
             result['Train'] = "{} ({})".format(p, int(tr_percentage*100))
             result['Test'] = "{} ({})".format(p, int((1-tr_percentage)*100))    
@@ -136,13 +143,15 @@ def train(config_path, logdir="./logs"):
     classifiers = config["engagement"]["models"]
     model_types = config["engagement"]["model_types"]
     dataset_file = os.path.join("dataset", config["engagement"]["dataset"])
-    labels = config["engagement"]["labels"]
+
     df_data = pd.read_csv(dataset_file)
+    participants = np.sort(df_data.participant.unique())
 
     features = NON_FEATURES_COLS + MIGRAVE_VISUAL_FEATURES
     df_data_copy = df_data[features].copy()
 
     mean_results = {}
+    clf_results = None
     for i,model_type in enumerate(model_types):
         mean_results[model_type] = {}
         for clf_name in classifiers:
@@ -150,9 +159,10 @@ def train(config_path, logdir="./logs"):
                 clf = ensemble.RandomForestClassifier(n_estimators=100,
                                                       max_depth=None,
                                                       max_features=None, 
-                                                      n_jobs=-1)
+                                                      n_jobs=-1,
+                                                      )
             elif "xgboost" in clf_name:
-                clf = XGBClassifier(n_estimators=100, 
+                clf = XGBClassifier(n_estimators=100,
                                     max_depth=6, 
                                     booster='gbtree',
                                     n_jobs=-1, 
@@ -173,27 +183,28 @@ def train(config_path, logdir="./logs"):
 
             print(f"Training {clf_name} on {model_type} data")
             if "generalized" in model_type:
-                clf_results = train_generalized_model(df_data_copy, 
-                                                      clf,
-                                                      participants=labels,
-                                                      logdir=logdir)
+                if len(participants) > 1:
+                    clf_results = train_generalized_model(df_data_copy.copy(),
+                                                          clf,
+                                                          participants=participants,
+                                                          logdir=logdir)
+                else:
+                    print(f"Number of participant < 2. Skipping training generalized model")
             elif "individualized" in model_type:
-                clf_results = train_individualized_model(df_data_copy, 
+                clf_results = train_individualized_model(df_data_copy.copy(),
                                                          clf,
-                                                         participants=labels,
+                                                         participants=participants,
                                                          logdir=logdir)
-
             # save results
-            clf_result_pd = pd.DataFrame(columns=['Train', 'Test', 'Accuracy', 
-                                                  'AUROC', 'Precision_0', 'Precision_1', 
-                                                  'Recall_0', 'Recall_1', 'F1_0', 'F1_1'])
-            clf_result_pd = clf_result_pd.append(clf_results, ignore_index=True, sort=False).round(3)
-            clf_result_pd.to_csv("{}/{}_{}.csv".format(logdir, model_type, clf_name), index=False)
-
-            mean_results[model_type][clf_name] = round(clf_result_pd.AUROC.mean()*100,2)
-        
+            if clf_results:
+                clf_result_pd = pd.DataFrame(columns=list(clf_results[0].keys()))
+                clf_result_pd = clf_result_pd.append(clf_results, ignore_index=True, sort=False).round(3)
+                clf_result_pd.to_csv("{}/{}_{}.csv".format(logdir, model_type, clf_name), index=False)
+                mean_results[model_type][clf_name] = round(clf_result_pd.AUROC.mean()*100,2)
+            clf_results = None
         # plot results
-        utils.plot_pies(mean_results[model_type], cmap_idx=i, name=model_type)
+        if mean_results[model_type]:
+            utils.plot_results(mean_results[model_type], cmap_idx=i, name=model_type, show=False)
             
 
 if __name__ == '__main__':
