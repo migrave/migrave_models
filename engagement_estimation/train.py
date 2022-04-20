@@ -35,7 +35,8 @@ NON_FEATURES_COLS = ["participant","session_num","timestamp","engagement"]
 
 
 def train_generalized_model(df_data, 
-                            classifier, 
+                            classifier,
+                            classifier_name,
                             participants=[1,2,3,4],
                             logdir="./logs"):
     """
@@ -70,12 +71,13 @@ def train_generalized_model(df_data,
             os.makedirs(logdir)
             
         utils.save_classifier(classifier, mean, std, 
-                        "{}/generalized_model_tested_on_{}.joblib".format(logdir, p))
+                        "{}/generalized_{}_model_tested_on_{}.joblib".format(logdir, classifier_name, p))
 
     return all_results
   
 def train_individualized_model(df_data, 
                                classifier,
+                               classifier_name,
                                participants=[1,2,3,4],
                                train_percentage=[0.8, 0.9],
                                logdir="./logs"):
@@ -120,7 +122,10 @@ def train_individualized_model(df_data,
                 os.makedirs(logdir)
             
             utils.save_classifier(classifier, mean, std, 
-                        "{}/individualized_trained_on_{}_train_percentage_{}.joblib".format(logdir, p, tr_percentage))
+                        "{}/individualized_{}_trained_on_{}_train_percentage_{}.joblib".format(logdir,
+                                                                                               classifier_name,
+                                                                                               p,
+                                                                                               tr_percentage))
 
     return all_results
   
@@ -186,6 +191,7 @@ def train(config_path, logdir="./logs"):
                 if len(participants) > 1:
                     clf_results = train_generalized_model(df_data_copy.copy(),
                                                           clf,
+                                                          clf_name,
                                                           participants=participants,
                                                           logdir=logdir)
                 else:
@@ -193,6 +199,7 @@ def train(config_path, logdir="./logs"):
             elif "individualized" in model_type:
                 clf_results = train_individualized_model(df_data_copy.copy(),
                                                          clf,
+                                                         clf_name,
                                                          participants=participants,
                                                          logdir=logdir)
             # save results
