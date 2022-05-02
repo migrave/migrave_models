@@ -6,10 +6,6 @@ import pandas as pd
 import numpy as np
 import warnings
 
-from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
-from sklearn import metrics
 from sklearn import neighbors
 import sklearn.ensemble as ensemble
 import sklearn.naive_bayes as naive_bayes
@@ -33,7 +29,7 @@ MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_gaze_0_y', 'of_gaze_0_z', 'of_gaze_1_x', 'of_gaze_1_y',
                            'of_gaze_1_z', 'of_gaze_angle_x', 'of_gaze_angle_y', 'of_pose_Tx',
                            'of_pose_Ty', 'of_pose_Tz', 'of_pose_Rx', 'of_pose_Ry', 'of_pose_Rz']
-NON_FEATURES_COLS = ["participant","session_num","timestamp","engagement"]
+NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement"]
 
 
 def train_generalized_model(df_data,
