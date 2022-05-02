@@ -1,12 +1,11 @@
-engagement:
-  model_types:
+model_types:
     - individualized
     - generalized
-  models:
+models:
     - random_forest
     - xgboost
     - svm
     - knn
     - naive_bayes
     - logistic_regression
-  dataset: migrave_engagement_data_small.csv
+dataset: migrave_engagement_data_small.csv

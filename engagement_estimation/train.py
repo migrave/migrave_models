@@ -160,9 +160,9 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         print(exc)
         return
 
-    classifiers = config["engagement"]["models"]
-    model_types = config["engagement"]["model_types"]
-    dataset_file = os.path.join("dataset", config["engagement"]["dataset"])
+    classifiers = config["models"]
+    model_types = config["model_types"]
+    dataset_file = os.path.join("dataset", config["dataset"])
 
     df_data = pd.read_csv(dataset_file)
     participants = np.sort(df_data.participant.unique())
