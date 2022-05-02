@@ -1,20 +1,38 @@
 # Engagement estimation
 
 ## Install requirements
+
 ```
 pip3 install -r requirements.txt
 ```
 
-## Config
-Config file under `config/config.yaml` contains information about what models to train, 
-and types of the model (`individualized` or `generalized`), and the dataset.
+## Train and evaluate engagement estimation models
 
-## Train engagement estimation
-The engagement is divided into different levels 
-* `low_engagament`: -1 
-* `mid_engagement`: 0 
-* `high_engagement`: 1
+The engagement is divided into three different levels with labels `-1`, `0`, and `1`:
+* `low engagament`: -1
+* `neutral engagement`: 0
+* `high engagement`: 1
 
 ```
 python3 train.py --config ./config/config.yaml
+```
+
+## Config
+
+The config file under `config/config.yaml` contains information about what models to train, the model types (`individualized` or `generalized`), and the dataset to use for training and evaluation.
+
+An example of a valid config file is given below:
+
+```
+model_types:
+    - individualized
+    - generalized
+models:
+    - random_forest
+    - xgboost
+    - svm
+    - knn
+    - naive_bayes
+    - logistic_regression
+dataset: migrave_engagement_data_small.csv
 ```
