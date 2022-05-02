@@ -3,7 +3,6 @@ import os
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
-import yaml
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
@@ -26,23 +25,6 @@ NAN_MAX_COLS = ['of_gaze_0_x',
                 'of_pose_Ty',
                 'of_pose_Tz',
                 'of_pose_distance']
-
-def parse_yaml_config(config_file):
-    """
-    Parse yaml config
-    Input:
-      config_file: yaml file to parse
-    Return:
-      Dictionary of the given yaml file
-    """
-    if config_file and os.path.isfile(config_file):
-        configs = {}
-        with open(config_file, 'r') as infile:
-            configs = yaml.safe_load(infile)
-
-        return configs
-    else:
-        print("Config not found or not given")
 
 def save_classifier(classifier, mean, std, classifier_name):
     """
