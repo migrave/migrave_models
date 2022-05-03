@@ -1,12 +1,25 @@
 # Engagement estimation
 
-The engagement is divided into three different levels with labels `-1`, `0`, and `1`:
+This package implements engagement classifiers as described in
+
+```
+S. Jain, B. Thiagarajan, Z. Shi, C. Clabaugh, and M. J. Matarić, "Modeling engagement in
+long-term, in-home socially assistive robot interventions for children with autism
+spectrum disorders," Science Robotics, vol. 5, no. 39, 2020.
+```
+
+Engagement estimation models can be trained in either a *generalised* mode, namely on data from multiple users, or a *personalised* mode, namely on data from a single user.
+
+We model engagement at three different levels, with labels `-1`, `0`, and `1`:
 * `low engagament`: -1
 * `neutral engagement`: 0
 * `high engagement`: 1
 
-## Install requirements
+The package is, however, general enough to be used with different engagement categorisations.
 
+## Installing requirements
+
+The requirements can be installed by running
 ```
 pip3 install -r requirements.txt
 ```
@@ -49,7 +62,7 @@ python3 train.py -m xgboost -t personalised \
         -d dataset/migrave_engagement_data_small.csv -p my_model_1.joblib -u 1
 ```
 
-## Train and evaluate engagement estimation models
+## Training and evaluating different engagement estimation models
 
 To train and evaluate different types of engagement estimation models, the `train_and_eval_models.py` script can be used:
 ```
