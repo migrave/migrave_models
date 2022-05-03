@@ -1,6 +1,62 @@
+from typing import Union
+
 import numpy as np
 from sklearn import metrics
+from sklearn import neighbors
+import sklearn.ensemble as ensemble
+import sklearn.naive_bayes as naive_bayes
+import sklearn.calibration as calibration
+import sklearn.svm as svm
+import sklearn.linear_model as linear_model
+import xgboost
 
+
+def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
+                                             xgboost.XGBClassifier,
+                                             ensemble.AdaBoostClassifier,
+                                             calibration.CalibratedClassifierCV,
+                                             neighbors.KNeighborsClassifier,
+                                             naive_bayes.GaussianNB,
+                                             linear_model.LogisticRegression]:
+    """Returns a scikit-learn classifier object corresponding to the given model name.
+    The following classifier names are allowed:
+        random_forest, xgboost, adaboost, svm, knn, naive_bayes, and logistic_regression.
+    Raises a ValueError if a non-supported model name is specified.
+
+    If 'random_forest' is passed, uses 100 trees.
+    In the case of 'adaboost', uses a random forest with 100 trees.
+    For 'xgboost', 100 estimators with maximum depth of 6 are used.
+    In th case of 'naive_bayes', a Gaussian naive Bayes classifier is used.
+
+    Keyword arguments:
+    @param model_name: str -- name of the classifier to be instantiated
+
+    """
+    model = None
+    if "random_forest" in model_name:
+        model = ensemble.RandomForestClassifier(n_estimators=100,
+                                                max_depth=None,
+                                                max_features=None,
+                                                n_jobs=-1)
+    elif "xgboost" in model_name:
+        model = xgboost.XGBClassifier(n_estimators=100,
+                                      max_depth=6,
+                                      booster='gbtree',
+                                      n_jobs=-1,
+                                      eval_metric='logloss')
+    elif "adaboost" in model_name:
+        model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100))
+    elif "svm" in model_name:
+        model = calibration.CalibratedClassifierCV(svm.LinearSVC())
+    elif "knn" in model_name:
+        model = neighbors.KNeighborsClassifier(n_neighbors=5)
+    elif "naive_bayes" in model_name:
+        model = naive_bayes.GaussianNB()
+    elif "logistic_regression" in model_name:
+        model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
+    else:
+        raise ValueError(f"Classifier {model_name} is not supported")
+    return model
 
 def sklearn(train_data,
             train_labels,

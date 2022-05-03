@@ -8,14 +8,6 @@ import pandas as pd
 import numpy as np
 import warnings
 
-from sklearn import neighbors
-import sklearn.ensemble as ensemble
-import sklearn.naive_bayes as naive_bayes
-import sklearn.calibration as calibration
-import sklearn.svm as svm
-import sklearn.linear_model as linear_model
-from xgboost import XGBClassifier
-
 from mas_tools.file_utils import load_yaml_file
 
 __author__ = "Mohammad Wasil"
@@ -172,34 +164,15 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
 
     mean_results = {}
     clf_results = None
-    for i,model_type in enumerate(model_types):
+    for i, model_type in enumerate(model_types):
         mean_results[model_type] = {}
         for clf_name in classifiers:
-            if "random_forest" in clf_name:
-                clf = ensemble.RandomForestClassifier(n_estimators=100,
-                                                      max_depth=None,
-                                                      max_features=None,
-                                                      n_jobs=-1,
-                                                      )
-            elif "xgboost" in clf_name:
-                clf = XGBClassifier(n_estimators=100,
-                                    max_depth=6,
-                                    booster='gbtree',
-                                    n_jobs=-1,
-                                    eval_metric='logloss')
-            elif "adaboost" in clf_name:
-                clf = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100))
-            elif "svm" in clf_name:
-                clf = calibration.CalibratedClassifierCV(svm.LinearSVC())
-            elif "knn" in clf_name:
-                clf = neighbors.KNeighborsClassifier(n_neighbors=5)
-            elif "naive_bayes" in clf_name:
-                clf = naive_bayes.GaussianNB()
-            elif "logistic_regression" in clf_name:
-                clf = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
-            else:
-                print(f"Classifier {clf_name} is not recognized")
-                return
+            try:
+                clf = models.get_classifier(clf_name)
+            except ValueError as exc:
+                print(exc)
+                print(f"Skipping {clf_name}")
+                continue
 
             print(f"Training {clf_name} on {model_type} data")
             if "generalized" in model_type:
