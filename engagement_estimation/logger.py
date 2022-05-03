@@ -13,7 +13,7 @@ class Logger(object):
         msg: str -- message to log
 
         """
-        print(msg)
+        print(colored('[INFO] ' + msg, color='blue'))
 
     @staticmethod
     def warning(msg: str) -> None:
@@ -23,7 +23,7 @@ class Logger(object):
         msg: str -- message to log
 
         """
-        print(colored(msg, color='yellow'))
+        print(colored('[WARNING] ' + msg, color='yellow'))
 
     @staticmethod
     def error(msg):
@@ -33,4 +33,4 @@ class Logger(object):
         msg: str -- message to log
 
         """
-        print(colored(msg, color='red'))
+        print(colored('[ERROR] ' + msg, color='red'))
