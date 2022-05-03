@@ -10,6 +10,8 @@ import sklearn.svm as svm
 import sklearn.linear_model as linear_model
 import xgboost
 
+ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
+                       'knn', 'naive_bayes', 'logistic_regression']
 
 def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
@@ -32,6 +34,9 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
     @param model_name: str -- name of the classifier to be instantiated
 
     """
+    if model_name not in ALLOWED_CLASSIFIERS:
+        raise ValueError(f"Classifier {model_name} is not supported")
+
     model = None
     if "random_forest" in model_name:
         model = ensemble.RandomForestClassifier(n_estimators=100,
@@ -54,8 +59,6 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
         model = naive_bayes.GaussianNB()
     elif "logistic_regression" in model_name:
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
-    else:
-        raise ValueError(f"Classifier {model_name} is not supported")
     return model
 
 def sklearn(train_data,
@@ -89,7 +92,7 @@ def sklearn(train_data,
 
     result = {}
     result["AUROC"] = auroc
-    for i,cls in enumerate(cls_report.keys()):
+    for cls in cls_report.keys():
         if cls in target_names.values():
             result[f"Precision_{cls}"] = cls_report[cls]["precision"]
             result[f"Recall_{cls}"] = cls_report[cls]["recall"]
