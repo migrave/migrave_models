@@ -17,15 +17,6 @@ warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='./config/config.yaml', help='Config file')
 
-MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
-                           'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
-                           'of_AU14_c', 'of_AU15_c', 'of_AU17_c', 'of_AU20_c', 'of_AU23_c',
-                           'of_AU25_c', 'of_AU26_c', 'of_AU28_c', 'of_AU45_c', 'of_gaze_0_x',
-                           'of_gaze_0_y', 'of_gaze_0_z', 'of_gaze_1_x', 'of_gaze_1_y',
-                           'of_gaze_1_z', 'of_gaze_angle_x', 'of_gaze_angle_y', 'of_pose_Tx',
-                           'of_pose_Ty', 'of_pose_Tz', 'of_pose_Rx', 'of_pose_Ry', 'of_pose_Rz']
-NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement"]
-
 
 def train_generalized_model(df_data: pd.core.frame.DataFrame,
                             classifier,
@@ -160,7 +151,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     df_data = pd.read_csv(dataset_file)
     participants = np.sort(df_data.participant.unique())
 
-    features = NON_FEATURES_COLS + MIGRAVE_VISUAL_FEATURES
+    features = utils.NON_FEATURES_COLS + utils.MIGRAVE_VISUAL_FEATURES
     df_data_copy = df_data[features].copy()
 
     mean_results = {}
