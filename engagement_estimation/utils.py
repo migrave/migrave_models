@@ -1,8 +1,10 @@
+from typing import Dict, Tuple
 import os
 
 import joblib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
@@ -49,43 +51,55 @@ def save_classifier(classifier, mean, std, classifier_name):
 
 # Some codes are based on
 # https://github.com/interaction-lab/exp_engagement/tree/master/Models
-def standardize_data(train_data, test_data):
-    """
-    Standardized data and fill nan with max value in the corr. col
-    input:
-      train_data: train data in pd dataframe format
-      test_data: test data in pd dataframe format
-    Return:
-      standarfized train_data and test_data
-    """
-    train_data_mean = []
-    train_data_std = []
-    for c in train_data.columns:
-        # compute man and std while ignoring nan
-        mean = np.nanmean(train_data[c])
-        std = np.nanstd(train_data[c])
+def standardize_data(data: pd.core.frame.DataFrame,
+                     mean: Dict[str, float] = None,
+                     std: Dict[str, float] = None) -> Tuple[pd.core.frame.DataFrame,
+                                                            Dict[str, float],
+                                                            Dict[str, float]]:
+    """Normalises each column with respect to the mean and standard deviation,
+    and fills NaN values with the maximum column value. If mean and std are None,
+    calculates the column means and standard deviations from the data; otherwise,
+    uses the provided values for normalisation.
 
-        train_data_mean.append(mean)
-        train_data_std.append(std)
+    Keyword arguments:
+    @param data: pd.core.frame.DataFrame -- data to be normalised
+    @param mean: Dict[str, float] -- dictionary of column names and column means
+                                     (default None, in which case the means are
+                                      calculated from the data)
+    @param std: Dict[str, float] -- dictionary of column names and column standard deviations
+                                    (default None, in which case the standard deviations are
+                                     calculated from the data)
+
+    """
+    data_mean = {}
+    data_std = {}
+    data_copy = data.copy()
+    for c in data.columns:
+        # compute man and std while ignoring nan
+        if mean is None and std is None:
+            col_mean = np.nanmean(data_copy[c])
+            col_std = np.nanstd(data_copy[c])
+        else:
+            col_mean = mean[c]
+            col_std = std[c]
+
+        data_mean[c] = col_mean
+        data_std[c] = col_std
 
         if std == 0:
-            train_data[c] = (train_data[c]-mean)
-            test_data[c] = (test_data[c]-mean)
+            data_copy[c] = data_copy[c] - col_mean
         else:
-            train_data[c] = (train_data[c]-mean)/(std)
-            test_data[c] = (test_data[c]-mean)/(std)
+            data_copy[c] = (data_copy[c] - col_mean) / col_std
 
         # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
         if c not in NAN_MAX_COLS:
-            min_val = np.nanmin(train_data[c])
-            train_data[c] = train_data[c].fillna(min_val)
-            test_data[c] = test_data[c].fillna(min_val)
+            min_val = np.nanmin(data_copy[c])
+            data_copy[c] = data_copy[c].fillna(min_val)
         else:
-            max_val = np.nanmax(train_data[c])
-            train_data[c] = train_data[c].fillna(max_val)
-            test_data[c] = test_data[c].fillna(max_val)
+            max_val = np.nanmax(data_copy[c])
+            data_copy[c] = data_copy[c].fillna(max_val)
 
-    return train_data, test_data, np.asarray(train_data_mean), np.asarray(train_data_std)
+    return data_copy, data_mean, data_std
 
 def split_generalized_data(dataframe, idx, non_feature_cols=None):
     """
@@ -109,15 +123,16 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None):
         train_data = train_data.drop(columns=non_feature_cols)
         test_data = test_data.drop(columns=non_feature_cols)
     else:
-        train_data = train_data.drop(columns=['engagement', 'session_num', 'participant', 'timestamp'])
-        test_data = test_data.drop(columns=['engagement', 'session_num', 'participant', 'timestamp'])
+        train_data = train_data.drop(columns=NON_FEATURES_COLS)
+        test_data = test_data.drop(columns=NON_FEATURES_COLS)
 
     # shuffle data
     train_data, train_labels = shuffle(train_data, train_labels)
 
-    train_data, test_data, mean, std = standardize_data(train_data, test_data)
+    train_data, train_mean, train_std = standardize_data(train_data)
+    test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
 
-    return train_data, train_labels, test_data, test_labels, mean, std
+    return train_data, train_labels, test_data, test_labels, train_mean, train_std
 
 def split_individualized_data(dataframe,
                               idx,
@@ -147,12 +162,13 @@ def split_individualized_data(dataframe,
         train_data = train_data.drop(columns=non_feature_cols)
         test_data = test_data.drop(columns=non_feature_cols)
     else:
-        train_data = train_data.drop(columns=['engagement', 'session_num', 'participant', 'timestamp'])
-        test_data = test_data.drop(columns=['engagement', 'session_num', 'participant', 'timestamp'])
+        train_data = train_data.drop(columns=NON_FEATURES_COLS)
+        test_data = test_data.drop(columns=NON_FEATURES_COLS)
 
-    train_data, test_data, mean, std = standardize_data(train_data, test_data)
+    train_data, train_mean, train_std = standardize_data(train_data)
+    test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
 
-    return train_data, train_labels, test_data, test_labels, mean, std
+    return train_data, train_labels, test_data, test_labels, train_mean, train_std
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
     """
