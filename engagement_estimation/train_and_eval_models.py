@@ -8,6 +8,7 @@ import numpy as np
 
 import models
 import utils
+from logger import Logger
 
 from mas_tools.file_utils import load_yaml_file
 
@@ -141,7 +142,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     try:
         config = load_yaml_file(config_path)
     except (OSError, ValueError) as exc:
-        print(exc)
+        Logger.error(str(exc))
         return
 
     classifiers = config["models"]
@@ -162,11 +163,11 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
             try:
                 clf = models.get_classifier(clf_name)
             except ValueError as exc:
-                print(exc)
-                print(f"Skipping {clf_name}")
+                Logger.error(str(exc))
+                Logger.warning(f"Skipping {clf_name}")
                 continue
 
-            print(f"Training {clf_name} on {model_type} data")
+            Logger.info(f"Training {clf_name} on {model_type} data")
             if "generalized" in model_type:
                 if len(participants) > 1:
                     clf_results = train_generalized_model(df_data_copy.copy(),
@@ -175,7 +176,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                                                           participants=participants,
                                                           logdir=logdir)
                 else:
-                    print(f"Number of participant < 2. Skipping training generalized model")
+                    Logger.warning(f"Number of participant < 2. Skipping training generalized model")
             elif "individualized" in model_type:
                 clf_results = train_individualized_model(df_data_copy.copy(),
                                                          clf,
