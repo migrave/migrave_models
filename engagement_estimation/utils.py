@@ -61,6 +61,11 @@ def standardize_data(data: pd.core.frame.DataFrame,
     calculates the column means and standard deviations from the data; otherwise,
     uses the provided values for normalisation.
 
+    Returns:
+    * the normalised data
+    * a dictionary of column names and mean values (the same as 'mean' if 'mean' is given)
+    * a dictionary of column names and standard deviations (the same as 'std' if 'std' is given)
+
     Keyword arguments:
     @param data: pd.core.frame.DataFrame -- data to be normalised
     @param mean: Dict[str, float] -- dictionary of column names and column means
