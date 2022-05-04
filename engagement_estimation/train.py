@@ -81,6 +81,10 @@ if __name__ == '__main__':
         Logger.error(f'{dataset_path} is not a valid file; exiting')
         sys.exit(1)
 
+    if os.path.splitext(dataset_path)[-1].lower() != '.csv':
+        Logger.error(f'The dataset should be provided in a .csv format; exiting')
+        sys.exit(1)
+
     if model_type == 'generalised':
         Logger.info(f'Training {model_name} classifier of type {model_type} on dataset {dataset_path}')
     else:
