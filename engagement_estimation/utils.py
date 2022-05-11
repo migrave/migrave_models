@@ -91,7 +91,7 @@ def standardize_data(data: pd.core.frame.DataFrame,
         data_mean[c] = col_mean
         data_std[c] = col_std
 
-        if std == 0:
+        if abs(col_std) < 1e-10:
             data_copy[c] = data_copy[c] - col_mean
         else:
             data_copy[c] = (data_copy[c] - col_mean) / col_std
