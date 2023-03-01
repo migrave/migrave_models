@@ -8,4 +8,6 @@ models:
     - knn
     - naive_bayes
     - logistic_regression
-dataset: features_video_right.csv
+datasets:
+    - features_video_right.csv
+    - features_video_left.csv

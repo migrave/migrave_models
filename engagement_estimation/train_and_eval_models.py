@@ -153,14 +153,27 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         Logger.error(str(exc))
         return
 
+    datasets = config["datasets"]
+    datasets_stem = [os.path.splitext(dataset)[0] for dataset in datasets]
+    dataset_logdir = os.path.join(logdir, "_".join(datasets_stem))
+    if not os.path.exists(dataset_logdir):
+        os.makedirs(dataset_logdir)
+
     classifiers = config["models"]
     model_types = config["model_types"]
-    dataset_file = os.path.join("dataset", config["dataset"])
+    dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
 
-    df_data = pd.read_csv(dataset_file)
+    df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_VISUAL_FEATURES)
+    for dataset_file in dataset_files:
+        df_data_visual = pd.read_csv(dataset_file, index_col=0)[utils.MIGRAVE_VISUAL_FEATURES + utils.JOIN_FEATURES_COLS]
+        dataset_stem = os.path.splitext(os.path.basename(dataset_file))[0]
+        df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in utils.MIGRAVE_VISUAL_FEATURES})
+        df_data = df_data.merge(right=df_data_visual, on=utils.JOIN_FEATURES_COLS)
+
     participants = np.sort(df_data.participant.unique())
 
-    features = utils.NON_FEATURES_COLS + utils.MIGRAVE_VISUAL_FEATURES
+    features = utils.NON_FEATURES_COLS + utils.MIGRAVE_VISUAL_FEATURES + utils.MIGRAVE_AUDIAL_FEATURES\
+               + utils.MIGRAVE_GAME_FEATURES
     df_data_copy = df_data[features].copy()
 
     mean_results = {}
@@ -182,7 +195,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                                                           clf,
                                                           clf_name,
                                                           participants=participants,
-                                                          logdir=logdir)
+                                                          logdir=dataset_logdir)
                 else:
                     Logger.warning(f"Number of participant < 2. Skipping training generalized model")
             elif "individualized" in model_type:
@@ -190,17 +203,17 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                                                          clf,
                                                          clf_name,
                                                          participants=participants,
-                                                         logdir=logdir)
+                                                         logdir=dataset_logdir)
             # save results
             if clf_results:
                 clf_result_pd = pd.DataFrame(columns=list(clf_results[0].keys()))
                 clf_result_pd = clf_result_pd.append(clf_results, ignore_index=True, sort=False).round(3)
-                clf_result_pd.to_csv("{}/{}_{}.csv".format(logdir, model_type, clf_name), index=False)
+                clf_result_pd.to_csv("{}/{}_{}.csv".format(dataset_logdir, model_type, clf_name), index=False)
                 mean_results[model_type][clf_name] = round(clf_result_pd.AUROC.mean()*100,2)
             clf_results = None
         # plot results
         if mean_results[model_type]:
-            utils.plot_results(mean_results[model_type], cmap_idx=i, name=model_type, show=False)
+            utils.plot_results(mean_results[model_type], cmap_idx=i, name=model_type, imdir=os.path.join(dataset_logdir, "images"), show=False)
 
 
 if __name__ == '__main__':

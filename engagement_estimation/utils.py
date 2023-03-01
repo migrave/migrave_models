@@ -16,8 +16,28 @@ MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU25_c', 'of_AU26_c', 'of_AU28_c', 'of_AU45_c', 'of_gaze_0_x',
                            'of_gaze_0_y', 'of_gaze_0_z', 'of_gaze_1_x', 'of_gaze_1_y',
                            'of_gaze_1_z', 'of_gaze_angle_x', 'of_gaze_angle_y', 'of_pose_Tx',
-                           'of_pose_Ty', 'of_pose_Tz', 'of_pose_Rx', 'of_pose_Ry', 'of_pose_Rz']
-NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement"]
+                           'of_pose_Ty', 'of_pose_Tz', 'of_pose_Rx', 'of_pose_Ry', 'of_pose_Rz',
+                           "of_confidence", "of_success", "of_ts_success", "of_pose_distance", "of_gaze_distance",
+                           "of_gaze_distance_x", "of_gaze_distance_y", "of_confidence_var", "of_ts_success_var",
+                           "of_pose_distance_var", "of_gaze_distance_var", "of_gaze_distance_x_var",
+                           "of_gaze_distance_y_var", "of_pose_Rx_var", "of_pose_Ry_var", "of_pose_Rz_var",
+                           "of_pose_Tx_var", "of_pose_Ty_var", "of_pose_Tz_var", "of_gaze_0_x_var", "of_gaze_0_y_var",
+                           "of_gaze_0_z_var", "of_gaze_1_x_var", "of_gaze_1_y_var", "of_gaze_1_z_var",
+                           "of_gaze_angle_x_var", "of_gaze_angle_y_var", "of_success_change", "of_AU01_c_change",
+                           "of_AU02_c_change", "of_AU04_c_change", "of_AU05_c_change", "of_AU06_c_change",
+                           "of_AU07_c_change", "of_AU09_c_change", "of_AU10_c_change", "of_AU12_c_change",
+                           "of_AU14_c_change", "of_AU15_c_change", "of_AU17_c_change", "of_AU20_c_change",
+                           "of_AU23_c_change", "of_AU25_c_change", "of_AU26_c_change", "of_AU28_c_change",
+                           "of_AU45_c_change", "op_person_n_col", "op_person_n_col_change"]
+MIGRAVE_AUDIAL_FEATURES = ["a_harmonicity", "a_intensity", "a_mfcc_0", "a_mfcc_1", "a_pitch_frequency",
+                           "a_pitch_strength", "a_harmonicity_var", "a_intensity_var", "a_mfcc_0_var",
+                           "a_mfcc_1_var", "a_pitch_frequency_var", "a_pitch_strength_var"]
+MIGRAVE_GAME_FEATURES = ["ros_aptitude", "ros_diff_1", "ros_diff_2", "ros_games_session", "ros_in_game",
+                         "ros_mistakes_game", "ros_mistakes_session", "ros_skill_EM", "ros_skill_IM", "ros_ts_attempt",
+                         "ros_ts_game_start", "ros_ts_robot_talked", "ros_aptitude_var"]
+NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement", "index_original", "frame_number"]
+
+JOIN_FEATURES_COLS = ["participant", "session_num", "index_original", "frame_number"]
 
 # Cols to fill with max or min
 NAN_MAX_COLS = ['of_gaze_0_x',
