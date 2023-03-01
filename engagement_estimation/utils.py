@@ -3,6 +3,8 @@ import os
 
 import joblib
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split

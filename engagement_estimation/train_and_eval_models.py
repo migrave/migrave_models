@@ -10,7 +10,8 @@ import models
 import utils
 from logger import Logger
 
-from mas_tools.file_utils import load_yaml_file
+# from mas_tools.file_utils import load_yaml_file
+import yaml
 
 __author__ = "Mohammad Wasil"
 
@@ -102,6 +103,12 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             train_data, train_labels, test_data, test_labels, mean, std = utils.split_individualized_data(df_data,
                                                                                                           idx=p,
                                                                                                           train_percentage=tr_percentage)
+            if len(np.unique(train_labels)) == 1:
+                print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
+            if len(np.unique(test_labels)) == 1:
+                print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
 
             model, result = models.sklearn(train_data.values, train_labels.values,
                                            test_data.values, test_labels.values,
@@ -140,7 +147,8 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         os.makedirs(logdir)
 
     try:
-        config = load_yaml_file(config_path)
+        with open(config_path) as ymlfile:
+            config = yaml.safe_load(ymlfile)
     except (OSError, ValueError) as exc:
         Logger.error(str(exc))
         return

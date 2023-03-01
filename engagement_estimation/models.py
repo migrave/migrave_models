@@ -66,7 +66,7 @@ def sklearn(train_data,
             test_data,
             test_labels,
             classifier,
-            target_names={0:-1, 1:0, 2:1}):
+            target_names={0:0, 1:1}):
     """
     Train classifier
     Input:
@@ -81,6 +81,7 @@ def sklearn(train_data,
 
     classifier.fit(train_data, train_labels)
     scores = classifier.predict_proba(test_data)
+    scores_1 = scores[:, 1]
     predictions = [target_names[np.argmax(sc)] for sc in scores]
 
     # classification report
@@ -88,7 +89,7 @@ def sklearn(train_data,
                                                predictions,
                                                target_names=list(target_names.values()),
                                                output_dict=True)
-    auroc = metrics.roc_auc_score(test_labels, scores, multi_class="ovr")
+    auroc = metrics.roc_auc_score(test_labels, scores_1, multi_class="ovr")    # TODO: skip individuals with only one class in training data
 
     result = {}
     result["AUROC"] = auroc

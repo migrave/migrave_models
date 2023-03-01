@@ -8,4 +8,4 @@ models:
     - knn
     - naive_bayes
     - logistic_regression
-dataset: migrave_engagement_data_small.csv
+dataset: features_video_right.csv
