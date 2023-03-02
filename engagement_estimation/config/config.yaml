@@ -10,4 +10,3 @@ models:
     - logistic_regression
 datasets:
     - features_video_right.csv
-    - features_video_left.csv

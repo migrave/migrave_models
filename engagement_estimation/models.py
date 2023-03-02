@@ -9,17 +9,20 @@ import sklearn.calibration as calibration
 import sklearn.svm as svm
 import sklearn.linear_model as linear_model
 import xgboost
+from tensorflow import keras
+from scikeras.wrappers import KerasClassifier
 
 ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
-                       'knn', 'naive_bayes', 'logistic_regression']
+                       'knn', 'naive_bayes', 'logistic_regression', "neural_network"]
 
-def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
+def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
                                              ensemble.AdaBoostClassifier,
                                              calibration.CalibratedClassifierCV,
                                              neighbors.KNeighborsClassifier,
                                              naive_bayes.GaussianNB,
-                                             linear_model.LogisticRegression]:
+                                             linear_model.LogisticRegression,
+                                             keras.Sequential]:
     """Returns a scikit-learn classifier object corresponding to the given model name.
     The following classifier names are allowed:
         random_forest, xgboost, adaboost, svm, knn, naive_bayes, and logistic_regression.
@@ -59,6 +62,15 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
         model = naive_bayes.GaussianNB()
     elif "logistic_regression" in model_name:
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
+    elif "neural_network":
+        nn = keras.Sequential(
+            [
+                keras.layers.Dense(100, input_shape=(feature_n,), activation="relu", name="hidden_0"),
+                keras.layers.Dense(1, activation="sigmoid", name="output"),
+            ]
+        )
+        nn.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        model = KerasClassifier(model=nn, epochs=100, validation_split=.3, callbacks=keras.callbacks.EarlyStopping)
     return model
 
 def sklearn(train_data,
@@ -89,7 +101,7 @@ def sklearn(train_data,
                                                predictions,
                                                target_names=list(target_names.values()),
                                                output_dict=True)
-    auroc = metrics.roc_auc_score(test_labels, scores_1, multi_class="ovr")    # TODO: skip individuals with only one class in training data
+    auroc = metrics.roc_auc_score(test_labels, scores_1, multi_class="ovr")
 
     result = {}
     result["AUROC"] = auroc

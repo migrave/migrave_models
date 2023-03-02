@@ -184,7 +184,8 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         mean_results[model_type] = {}
         for clf_name in classifiers:
             try:
-                clf = models.get_classifier(clf_name)
+                features_n = len(features) - len(utils.NON_FEATURES_COLS)
+                clf = models.get_classifier(clf_name, feature_n=features_n)
             except ValueError as exc:
                 Logger.error(str(exc))
                 Logger.warning(f"Skipping {clf_name}")
