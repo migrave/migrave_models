@@ -8,7 +8,7 @@ import sklearn.naive_bayes as naive_bayes
 import sklearn.calibration as calibration
 import sklearn.svm as svm
 import sklearn.linear_model as linear_model
-from sklearn.neural_network import MLPClassifier
+import sklearn.neural_network as neural_network
 import xgboost
 
 ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
@@ -21,7 +21,7 @@ def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomFore
                                              neighbors.KNeighborsClassifier,
                                              naive_bayes.GaussianNB,
                                              linear_model.LogisticRegression,
-                                             keras.Sequential]:
+                                             neural_network.MLPClassifier]:
     """Returns a scikit-learn classifier object corresponding to the given model name.
     The following classifier names are allowed:
         random_forest, xgboost, adaboost, svm, knn, naive_bayes, and logistic_regression.
@@ -62,7 +62,7 @@ def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomFore
     elif "logistic_regression" == model_name:
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
     elif "neural_network" == model_name:
-        model = MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
+        model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
     return model
 
 def sklearn(train_data,
