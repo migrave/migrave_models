@@ -8,9 +8,8 @@ import sklearn.naive_bayes as naive_bayes
 import sklearn.calibration as calibration
 import sklearn.svm as svm
 import sklearn.linear_model as linear_model
+from sklearn.neural_network import MLPClassifier
 import xgboost
-from tensorflow import keras
-from scikeras.wrappers import KerasClassifier
 
 ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
                        'knn', 'naive_bayes', 'logistic_regression', "neural_network"]
@@ -63,14 +62,7 @@ def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomFore
     elif "logistic_regression" == model_name:
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
     elif "neural_network" == model_name:
-        nn = keras.Sequential(
-            [
-                keras.layers.Dense(100, input_shape=(feature_n,), activation="relu", name="hidden_0"),
-                keras.layers.Dense(1, activation="sigmoid", name="output"),
-            ]
-        )
-        nn.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
-        model = KerasClassifier(model=nn, epochs=100, validation_split=.3, callbacks=keras.callbacks.EarlyStopping)
+        model = MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
     return model
 
 def sklearn(train_data,
