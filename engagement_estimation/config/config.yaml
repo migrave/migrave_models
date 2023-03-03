@@ -8,5 +8,6 @@ models:
     - knn
     - naive_bayes
     - logistic_regression
+    - neural_network
 datasets:
     - features_video_right.csv
