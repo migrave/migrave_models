@@ -216,7 +216,9 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
     # reorder results based on auroc
     results = dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
     num_of_plots = len(results)
-    colors = [np.arange(0,num_of_plots)*16, np.flip(np.arange(11,17)*16)][cmap_idx]
+    colors = np.arange(cmap_idx * 10, cmap_idx * 10 + num_of_plots)*16
+    if cmap_idx % 2 != 0:
+        colors = np.flip(colors)
     legend_names = ["_Hidden"]*num_of_plots*2
     for i,clf in enumerate(results.keys()):
         ax.pie([100-results[clf], results[clf]], radius=2-i*size,
