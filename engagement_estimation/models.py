@@ -41,28 +41,28 @@ def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomFore
         raise ValueError(f"Classifier {model_name} is not supported")
 
     model = None
-    if "random_forest" in model_name:
+    if "random_forest" == model_name:
         model = ensemble.RandomForestClassifier(n_estimators=100,
                                                 max_depth=None,
                                                 max_features=None,
                                                 n_jobs=-1)
-    elif "xgboost" in model_name:
+    elif "xgboost" == model_name:
         model = xgboost.XGBClassifier(n_estimators=100,
                                       max_depth=6,
                                       booster='gbtree',
                                       n_jobs=-1,
                                       eval_metric='logloss')
-    elif "adaboost" in model_name:
+    elif "adaboost" == model_name:
         model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100))
-    elif "svm" in model_name:
+    elif "svm" == model_name:
         model = calibration.CalibratedClassifierCV(svm.LinearSVC())
-    elif "knn" in model_name:
+    elif "knn" == model_name:
         model = neighbors.KNeighborsClassifier(n_neighbors=5)
-    elif "naive_bayes" in model_name:
+    elif "naive_bayes" == model_name:
         model = naive_bayes.GaussianNB()
-    elif "logistic_regression" in model_name:
+    elif "logistic_regression" == model_name:
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
-    elif "neural_network":
+    elif "neural_network" == model_name:
         nn = keras.Sequential(
             [
                 keras.layers.Dense(100, input_shape=(feature_n,), activation="relu", name="hidden_0"),
