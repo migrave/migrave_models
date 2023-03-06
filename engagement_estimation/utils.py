@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
+from tensorflow import keras
 
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
@@ -35,7 +36,7 @@ MIGRAVE_AUDIAL_FEATURES = ["a_harmonicity", "a_intensity", "a_mfcc_0", "a_mfcc_1
 MIGRAVE_GAME_FEATURES = ["ros_aptitude", "ros_diff_1", "ros_diff_2", "ros_games_session", "ros_in_game",
                          "ros_mistakes_game", "ros_mistakes_session", "ros_skill_EM", "ros_skill_IM", "ros_ts_attempt",
                          "ros_ts_game_start", "ros_ts_robot_talked", "ros_aptitude_var"]
-NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement", "index_original", "frame_number"]
+NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement", "index_original", "frame_number", "date_time"]
 
 JOIN_FEATURES_COLS = ["participant", "session_num", "index_original", "frame_number"]
 
@@ -128,7 +129,7 @@ def standardize_data(data: pd.core.frame.DataFrame,
 
     return data_copy, data_mean, data_std
 
-def split_generalized_data(dataframe, idx, non_feature_cols=None):
+def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False):
     """
     Train on other users
     Input:
@@ -153,18 +154,30 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None):
         train_data = train_data.drop(columns=NON_FEATURES_COLS)
         test_data = test_data.drop(columns=NON_FEATURES_COLS)
 
-    # shuffle data
-    train_data, train_labels = shuffle(train_data, train_labels)
-
     train_data, train_mean, train_std = standardize_data(train_data)
     test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
+
+    if sequence_model:
+        data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
+        session_groups = data.groupby(["participant", 'session_num'])
+        session_sequences = [list(group.index.values) for name, group in session_groups]
+        train_data = [train_data.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_data.index.values)]
+        test_data = [test_data.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(test_data.index.values)]
+        train_labels = [train_labels.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_labels.index.values)]
+        test_labels = [test_labels.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(test_labels.index.values)]
+
+        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32")
+        test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32")
+    # shuffle data
+    train_data, train_labels = shuffle(train_data, train_labels)
 
     return train_data, train_labels, test_data, test_labels, train_mean, train_std
 
 def split_individualized_data(dataframe,
                               idx,
                               train_percentage,
-                              non_feature_cols=None):
+                              non_feature_cols=None,
+                              sequence_model=False):
     """
     Train on a subset of user data
     Input:
@@ -181,6 +194,12 @@ def split_individualized_data(dataframe,
     labels = data['engagement']
 
     test_split_size = 1.0 - train_percentage
+
+    if sequence_model:
+        # TODO: Split data such that order remains, sessions for participant are seperated and test split is last test_split percentage of data
+        # TODO: Split first, no shuffle, than separate sessions
+        pass
+
     train_data, test_data, train_labels, test_labels = train_test_split(data,
                                                                         labels,
                                                                         test_size=test_split_size,

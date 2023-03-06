@@ -42,6 +42,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
     @param logdir: str -- directory where the trained models and evaluation results are saved
 
     """
+    sequence_model = classifier_name in models.SEQUENTIAL_CLASSIFIERS
     evaluation_results = []
     for p in participants:
         # shuffle all data and reindex
@@ -49,7 +50,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
         df_data = df_data.reset_index(drop=True)
 
         train_data, train_labels, test_data, test_labels, mean, std = utils.split_generalized_data(df_data,
-                                                                                  idx=p)
+                                                                                  idx=p, sequence_model=sequence_model)
         model, result = models.sklearn(train_data.values, train_labels.values,
                                        test_data.values, test_labels.values,
                                        classifier)
@@ -90,6 +91,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
     @param logdir: str -- directory where the trained models and evaluation results are saved
 
     """
+    sequence_model = classifier_name in models.SEQUENTIAL_CLASSIFIERS
     evaluation_results = []
     for p in participants:
         # shuffle all data and reindex
@@ -102,7 +104,8 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
 
             train_data, train_labels, test_data, test_labels, mean, std = utils.split_individualized_data(df_data,
                                                                                                           idx=p,
-                                                                                                          train_percentage=tr_percentage)
+                                                                                                          train_percentage=tr_percentage,
+                                                                                                          sequence_model=sequence_model)
             if len(np.unique(train_labels)) == 1:
                 print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
@@ -184,8 +187,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         mean_results[model_type] = {}
         for clf_name in classifiers:
             try:
-                features_n = len(features) - len(utils.NON_FEATURES_COLS)
-                clf = models.get_classifier(clf_name, feature_n=features_n)
+                clf = models.get_classifier(clf_name)
             except ValueError as exc:
                 Logger.error(str(exc))
                 Logger.warning(f"Skipping {clf_name}")

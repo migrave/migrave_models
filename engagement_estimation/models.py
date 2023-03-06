@@ -10,11 +10,16 @@ import sklearn.svm as svm
 import sklearn.linear_model as linear_model
 import sklearn.neural_network as neural_network
 import xgboost
+from tensorflow import keras
 
 ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
-                       'knn', 'naive_bayes', 'logistic_regression', "neural_network"]
+                       'knn', 'naive_bayes', 'logistic_regression', "neural_network",
+                       "recurrent_neural_network"]
 
-def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomForestClassifier,
+SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
+
+
+def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
                                              ensemble.AdaBoostClassifier,
                                              calibration.CalibratedClassifierCV,
@@ -63,6 +68,12 @@ def get_classifier(model_name: str, feature_n: int) -> Union[ensemble.RandomFore
         model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
     elif "neural_network" == model_name:
         model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
+    elif "recurrent_neural_network" == model_name:
+        model = keras.Sequential()
+        model.add(keras.layers.LSTM(100, return_sequences=True, activation="relu"))
+        model.add(keras.layers.Dense(1, activation="sigmoid"))
+        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        # TODO: ensure data is sorted, reshape data to sequences for each subject and session, apply zero padding (?), add early stopping (?)
     return model
 
 def sklearn(train_data,
