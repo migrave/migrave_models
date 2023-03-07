@@ -60,6 +60,7 @@ NAN_MAX_COLS = ['of_gaze_0_x',
                 'of_pose_Tz',
                 'of_pose_distance']
 
+
 def save_classifier(classifier, mean, std, classifier_name):
     """
     Save classifier
@@ -71,6 +72,7 @@ def save_classifier(classifier, mean, std, classifier_name):
     """
     with open(classifier_name, 'wb') as f:
         joblib.dump([classifier, mean, std], f, protocol=2)
+
 
 # Some codes are based on
 # https://github.com/interaction-lab/exp_engagement/tree/master/Models
@@ -129,6 +131,7 @@ def standardize_data(data: pd.core.frame.DataFrame,
 
     return data_copy, data_mean, data_std
 
+
 def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False):
     """
     Train on other users
@@ -144,8 +147,8 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     train_data = data.loc[data["participant"] != idx]
     test_data = data.loc[data["participant"] == idx]
 
-    train_labels = train_data['engagement']
-    test_labels = test_data['engagement']
+    train_labels = train_data[['engagement']]
+    test_labels = test_data[['engagement']]
 
     if non_feature_cols:
         train_data = train_data.drop(columns=non_feature_cols)
@@ -162,16 +165,22 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
         train_data = [train_data.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_data.index.values)]
-        test_data = [test_data.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(test_data.index.values)]
+        test_data = [test_data.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_data.index.values)]
         train_labels = [train_labels.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_labels.index.values)]
-        test_labels = [test_labels.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(test_labels.index.values)]
+        test_labels = [test_labels.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_labels.index.values)]
 
-        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32")
-        test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32")
+        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
+        train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
+    else:
+        train_data = train_data.values
+        test_data = test_data.values
+        train_labels = train_labels.values
+        test_labels = test_labels.values
     # shuffle data
     train_data, train_labels = shuffle(train_data, train_labels)
 
     return train_data, train_labels, test_data, test_labels, train_mean, train_std
+
 
 def split_individualized_data(dataframe,
                               idx,
@@ -191,19 +200,12 @@ def split_individualized_data(dataframe,
 
     # before split, sort value based on session_num and timestamp
     data = data.sort_values(['session_num', 'timestamp'], ascending=[True, True])
-    labels = data['engagement']
+    labels = data[['engagement']]
 
     test_split_size = 1.0 - train_percentage
 
-    if sequence_model:
-        # TODO: Split data such that order remains, sessions for participant are seperated and test split is last test_split percentage of data
-        # TODO: Split first, no shuffle, than separate sessions
-        pass
+    train_data, test_data, train_labels, test_labels = train_test_split(data, labels, test_size=test_split_size, shuffle=False)
 
-    train_data, test_data, train_labels, test_labels = train_test_split(data,
-                                                                        labels,
-                                                                        test_size=test_split_size,
-                                                                        shuffle=True)
     if non_feature_cols:
         train_data = train_data.drop(columns=non_feature_cols)
         test_data = test_data.drop(columns=non_feature_cols)
@@ -214,7 +216,30 @@ def split_individualized_data(dataframe,
     train_data, train_mean, train_std = standardize_data(train_data)
     test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
 
+    if sequence_model:
+        session_groups = data.groupby(["participant", 'session_num'])
+        session_sequences = [list(group.index.values) for name, group in session_groups]
+        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]] for session_sequence in session_sequences if
+                      [idx for idx in session_sequence if idx in list(train_data.index.values)]]
+        test_data = [test_data.loc[[idx for idx in session_sequence if idx in list(test_data.index.values)]].values for session_sequence in session_sequences if
+                     [idx for idx in session_sequence if idx in list(test_data.index.values)]]
+        train_labels = [train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]] for session_sequence in session_sequences if
+                        [idx for idx in session_sequence if idx in list(train_labels.index.values)]]
+        test_labels = [test_labels.loc[[idx for idx in session_sequence if idx in list(test_labels.index.values)]].values for session_sequence in session_sequences if
+                       [idx for idx in session_sequence if idx in list(test_labels.index.values)]]
+
+        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
+        train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
+    else:
+        train_data = train_data.values
+        test_data = test_data.values
+        train_labels = train_labels.values
+        test_labels = test_labels.values
+
+    train_data, train_labels = shuffle(train_data, train_labels)
+
     return train_data, train_labels, test_data, test_labels, train_mean, train_std
+
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
     """

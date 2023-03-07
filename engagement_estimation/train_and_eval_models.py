@@ -51,8 +51,8 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
 
         train_data, train_labels, test_data, test_labels, mean, std = utils.split_generalized_data(df_data,
                                                                                   idx=p, sequence_model=sequence_model)
-        model, result = models.sklearn(train_data.values, train_labels.values,
-                                       test_data.values, test_labels.values,
+        model, result = models.sklearn(train_data, train_labels,
+                                       test_data, test_labels,
                                        classifier)
         result['Train'] = ", ".join(str(x) for x in participants if x != p)
         result['Test'] = p
@@ -66,6 +66,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
                         "{}/generalized_{}_model_tested_on_{}.joblib".format(logdir, classifier_name, p))
 
     return evaluation_results
+
 
 def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                classifier,
@@ -106,15 +107,23 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                                                                                           idx=p,
                                                                                                           train_percentage=tr_percentage,
                                                                                                           sequence_model=sequence_model)
-            if len(np.unique(train_labels)) == 1:
-                print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                continue
-            if len(np.unique(test_labels)) == 1:
-                print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                continue
+            if sequence_model:
+                if all(len(np.unique(train_label_sequence)) == 1 for train_label_sequence in train_labels):
+                    print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                    continue
+                if all(len(np.unique(test_label_sequence)) == 1 for test_label_sequence in test_labels):
+                    print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                    continue
+            else:
+                if len(np.unique(train_labels)) == 1:
+                    print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                    continue
+                if len(np.unique(test_labels)) == 1:
+                    print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                    continue
 
-            model, result = models.sklearn(train_data.values, train_labels.values,
-                                           test_data.values, test_labels.values,
+            model, result = models.sklearn(train_data, train_labels,
+                                           test_data, test_labels,
                                            classifier)
             result['Participant'] = p
             result['Train'] = "{} ({})".format(p, int(tr_percentage*100))
@@ -132,6 +141,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                                                                                          tr_percentage))
 
     return evaluation_results
+
 
 def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     """Trains and evaluates models as specified in the config file under "config_path".

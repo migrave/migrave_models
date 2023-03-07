@@ -1,6 +1,7 @@
 from typing import Union
 
 import numpy as np
+import pandas as pd
 from sklearn import metrics
 from sklearn import neighbors
 import sklearn.ensemble as ensemble
@@ -70,11 +71,12 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
         model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
     elif "recurrent_neural_network" == model_name:
         model = keras.Sequential()
-        model.add(keras.layers.LSTM(100, return_sequences=True, activation="relu"))
+        model.add(keras.layers.Masking(mask_value=0.0))
+        model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh"))
         model.add(keras.layers.Dense(1, activation="sigmoid"))
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
-        # TODO: ensure data is sorted, reshape data to sequences for each subject and session, apply zero padding (?), add early stopping (?)
     return model
+
 
 def sklearn(train_data,
             train_labels,
@@ -93,11 +95,19 @@ def sklearn(train_data,
     Return:
       Classifier and dictionary containing the results
     """
-
-    classifier.fit(train_data, train_labels)
-    scores = classifier.predict_proba(test_data)
-    scores_1 = scores[:, 1]
-    predictions = [target_names[np.argmax(sc)] for sc in scores]
+    if isinstance(classifier, keras.Sequential):
+        callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
+        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_split=.1, callbacks=[callback])
+        test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
+        scores_1 = classifier.predict(test_data)
+        scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
+        test_labels = np.concatenate(test_labels).flatten().tolist()
+        predictions = [target_names[np.rint(sc)] for sc in scores_1]
+    else:
+        classifier.fit(train_data, train_labels)
+        scores = classifier.predict_proba(test_data)
+        scores_1 = scores[:, 1]
+        predictions = [target_names[np.argmax(sc)] for sc in scores]
 
     # classification report
     cls_report = metrics.classification_report(test_labels,
