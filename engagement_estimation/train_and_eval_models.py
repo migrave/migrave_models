@@ -63,7 +63,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
             os.makedirs(logdir)
 
         utils.save_classifier(classifier, mean, std,
-                        "{}/generalized_{}_model_tested_on_{}.joblib".format(logdir, classifier_name, p))
+                        "{}/generalized_{}_model_tested_on_{}".format(logdir, classifier_name, p))
 
     return evaluation_results
 

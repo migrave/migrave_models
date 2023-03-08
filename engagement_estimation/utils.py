@@ -11,6 +11,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from tensorflow import keras
 
+from models import SEQUENTIAL_CLASSIFIERS
+
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
                            'of_AU14_c', 'of_AU15_c', 'of_AU17_c', 'of_AU20_c', 'of_AU23_c',
@@ -70,8 +72,13 @@ def save_classifier(classifier, mean, std, classifier_name):
       std: standar dev of train data
       classifier_name: file name of the classifier
     """
-    with open(classifier_name, 'wb') as f:
-        joblib.dump([classifier, mean, std], f, protocol=2)
+    if isinstance(classifier, keras.Sequential):
+        classifier.save(classifier_name + ".h5")
+        with open(classifier_name + ".joblib", 'wb') as f:
+            joblib.dump([mean, std], f, protocol=2)
+    else:
+        with open(classifier_name + ".joblib", 'wb') as f:
+            joblib.dump([classifier, mean, std], f, protocol=2)
 
 
 # Some codes are based on
@@ -164,13 +171,10 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_data.index.values)]
+        train_data = [train_data.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(train_data.index.values)]
         test_data = [test_data.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_data.index.values)]
-        train_labels = [train_labels.loc[session_sequence] for session_sequence in session_sequences if session_sequence[0] in list(train_labels.index.values)]
+        train_labels = [train_labels.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(train_labels.index.values)]
         test_labels = [test_labels.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_labels.index.values)]
-
-        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
-        train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -219,17 +223,14 @@ def split_individualized_data(dataframe,
     if sequence_model:
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]] for session_sequence in session_sequences if
+        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]].values for session_sequence in session_sequences if
                       [idx for idx in session_sequence if idx in list(train_data.index.values)]]
         test_data = [test_data.loc[[idx for idx in session_sequence if idx in list(test_data.index.values)]].values for session_sequence in session_sequences if
                      [idx for idx in session_sequence if idx in list(test_data.index.values)]]
-        train_labels = [train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]] for session_sequence in session_sequences if
+        train_labels = [train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]].values for session_sequence in session_sequences if
                         [idx for idx in session_sequence if idx in list(train_labels.index.values)]]
         test_labels = [test_labels.loc[[idx for idx in session_sequence if idx in list(test_labels.index.values)]].values for session_sequence in session_sequences if
                        [idx for idx in session_sequence if idx in list(test_labels.index.values)]]
-
-        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
-        train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
     else:
         train_data = train_data.values
         test_data = test_data.values

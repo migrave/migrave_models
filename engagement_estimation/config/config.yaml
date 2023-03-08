@@ -9,5 +9,8 @@ models:
     - naive_bayes
     - logistic_regression
     - neural_network
+    - recurrent_neural_network
+    - hmm
+    - crf
 datasets:
     - features_video_right.csv
