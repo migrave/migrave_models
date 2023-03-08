@@ -102,10 +102,20 @@ def sklearn(train_data,
       Classifier and dictionary containing the results
     """
     if isinstance(classifier, keras.Sequential):
+        validation_data = []
+        validation_labels = []
+        for i, sequence in enumerate(train_data):
+            idx = int(sequence.shape[0] * 0.9)
+            train_data[i] = sequence[:idx, :]
+            validation_data.append(sequence[idx:, :])
+            validation_labels.append(train_labels[i][idx:, :])
+            train_labels[i] = train_labels[i][:idx, :]
         train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
         train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
+        validation_data = keras.preprocessing.sequence.pad_sequences(validation_data, padding="post", dtype="float32", value=0.0)
+        validation_labels = keras.preprocessing.sequence.pad_sequences(validation_labels, padding="post", dtype="float32", value=0.0)
         callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
-        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_split=.1, callbacks=[callback])
+        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback])
         test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
         scores_1 = classifier.predict(test_data)
         scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
