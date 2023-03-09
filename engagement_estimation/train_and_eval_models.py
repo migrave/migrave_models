@@ -191,7 +191,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
             df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in utils.MIGRAVE_VISUAL_FEATURES})
             df_data = df_data.merge(right=df_data_visual, on=utils.JOIN_FEATURES_COLS)
 
-    dataset_logdir = os.path.join(logdir, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities], "_".join(dataset_stems)))
+    dataset_logdir = os.path.join(logdir, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
 
