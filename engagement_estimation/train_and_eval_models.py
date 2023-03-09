@@ -125,6 +125,9 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             model, result = models.sklearn(train_data, train_labels,
                                            test_data, test_labels,
                                            classifier)
+            if result is None:
+                print(f"Faulty prediction. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
             result['Participant'] = p
             result['Train'] = "{} ({})".format(p, int(tr_percentage*100))
             result['Test'] = "{} ({})".format(p, int((1-tr_percentage)*100))

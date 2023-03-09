@@ -146,6 +146,8 @@ def sklearn(train_data,
         scores = classifier.predict_marginals(test_data)
         scores = np.array([[timestamp["0"], timestamp["1"]] for sequence in scores for timestamp in sequence])
         scores_1 = scores[:, 1]
+        if any(np.isnan(scores_1)):
+            return classifier, None
         test_labels = np.concatenate(test_labels).flatten().tolist()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     else:
