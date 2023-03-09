@@ -56,6 +56,9 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
         model, result = models.sklearn(train_data, train_labels,
                                        test_data, test_labels,
                                        classifier)
+        if result is None:
+            print(f"Faulty prediction. Excluded VP{p} for generalized model.")
+            continue
         result['Train'] = ", ".join(str(x) for x in participants if x != p)
         result['Test'] = p
 
