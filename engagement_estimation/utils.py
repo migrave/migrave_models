@@ -266,7 +266,7 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
         colors = np.flip(colors)
     legend_names = ["_Hidden"]*num_of_plots*2
     for i,clf in enumerate(results.keys()):
-        ax.pie([100-results[clf], results[clf]], radius=2-i*size,
+        ax.pie([100-results[clf], results[clf]], radius=3-i*size,
                 colors=cmap([128,colors[i]]), startangle=90,
                 wedgeprops=dict(width=size, edgecolor='w'))
         legend_names[i+i+1] = clf + f" ({results[clf]}%)"
