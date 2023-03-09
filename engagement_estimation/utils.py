@@ -11,7 +11,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from tensorflow import keras
 
-from models import SEQUENTIAL_CLASSIFIERS
 
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
