@@ -283,6 +283,7 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
         plt.title(f"{metric} on {name} models", y=1.35)
         plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
         plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".png"), bbox_inches='tight')
+        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".pdf"), bbox_inches='tight')
         if show:
             plt.show()
 
