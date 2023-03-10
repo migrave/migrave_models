@@ -53,6 +53,18 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
 
         train_data, train_labels, test_data, test_labels, mean, std = utils.split_generalized_data(df_data,
                                                                                   idx=p, sequence_model=sequence_model)
+
+        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+        test_unique, test_counts = np.unique(np.concatenate(test_labels).flatten(), return_counts=True)
+        if len(train_unique) == 1:
+            print(
+                f"Only one class in train data. Excluded VP{p} for generalized model.")
+            continue
+        if len(test_unique) == 1:
+            print(
+                f"Only one class in test data. Excluded VP{p} for generalized model.")
+            continue
+
         model, result = models.sklearn(train_data, train_labels,
                                        test_data, test_labels,
                                        classifier)
@@ -61,6 +73,12 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
             continue
         result['Train'] = ", ".join(str(x) for x in participants if x != p)
         result['Test'] = p
+        result["Train_0"] = train_counts[np.argmin(train_unique)]
+        result["Train_1"] = train_counts[np.argmax(train_unique)]
+        result["Test_0"] = test_counts[np.argmin(test_unique)]
+        result["Test_1"] = test_counts[np.argmax(test_unique)]
+        result["Total_0"] = result["Train_0"] + result["Test_0"]
+        result["Total_1"] = result["Train_1"] + result["Test_1"]
 
         evaluation_results.append(result)
 
@@ -112,20 +130,14 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                                                                                           idx=p,
                                                                                                           train_percentage=tr_percentage,
                                                                                                           sequence_model=sequence_model)
-            if sequence_model:
-                if all(len(np.unique(train_label_sequence)) == 1 for train_label_sequence in train_labels):
-                    print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                    continue
-                if all(len(np.unique(test_label_sequence)) == 1 for test_label_sequence in test_labels):
-                    print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                    continue
-            else:
-                if len(np.unique(train_labels)) == 1:
-                    print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                    continue
-                if len(np.unique(test_labels)) == 1:
-                    print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
-                    continue
+            train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            test_unique, test_counts = np.unique(np.concatenate(test_labels).flatten(), return_counts=True)
+            if len(train_unique) == 1:
+                print(f"Only one class in train data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
+            if len(test_unique) == 1:
+                print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
 
             model, result = models.sklearn(train_data, train_labels,
                                            test_data, test_labels,
@@ -136,6 +148,12 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             result['Participant'] = p
             result['Train'] = "{} ({})".format(p, int(tr_percentage*100))
             result['Test'] = "{} ({})".format(p, int((1-tr_percentage)*100))
+            result["Train_0"] = train_counts[np.argmin(train_unique)]
+            result["Train_1"] = train_counts[np.argmax(train_unique)]
+            result["Test_0"] = test_counts[np.argmin(test_unique)]
+            result["Test_1"] = test_counts[np.argmax(test_unique)]
+            result["Total_0"] = result["Train_0"] + result["Test_0"]
+            result["Total_1"] = result["Train_1"] + result["Test_1"]
 
             evaluation_results.append(result)
 
@@ -180,12 +198,9 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     model_types = config["model_types"]
     dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
     dataset_stems = []
+    features = utils.NON_FEATURES_COLS.copy()
 
     df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_VISUAL_FEATURES)
-    if "audio" not in modalities:
-        df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_AUDIAL_FEATURES)
-    if "game" not in modalities:
-        df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_GAME_FEATURES)
     if "video" in modalities:
         for dataset_file in dataset_files:
             df_data_visual = pd.read_csv(dataset_file, index_col=0)[utils.MIGRAVE_VISUAL_FEATURES + utils.JOIN_FEATURES_COLS]
@@ -193,6 +208,11 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
             dataset_stems.append(dataset_stem)
             df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in utils.MIGRAVE_VISUAL_FEATURES})
             df_data = df_data.merge(right=df_data_visual, on=utils.JOIN_FEATURES_COLS)
+            features.extend(["_".join([c, dataset_stem]) for c in utils.MIGRAVE_VISUAL_FEATURES])
+    if "audio" in modalities:
+        features.extend(utils.MIGRAVE_AUDIAL_FEATURES)
+    if "game" in modalities:
+        features.extend(utils.MIGRAVE_GAME_FEATURES)
 
     dataset_logdir = os.path.join(logdir, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
     if not os.path.exists(dataset_logdir):
@@ -200,15 +220,12 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
 
     participants = np.sort(df_data.participant.unique())
 
-    migrave_visual_features_extended = ["_".join([c, dataset_stem]) for dataset_stem in dataset_stems for c in utils.MIGRAVE_VISUAL_FEATURES]
-    features = utils.NON_FEATURES_COLS + migrave_visual_features_extended + utils.MIGRAVE_AUDIAL_FEATURES\
-               + utils.MIGRAVE_GAME_FEATURES
     df_data_copy = df_data[features].copy()
 
     mean_results = {}
     clf_results = None
     for i, model_type in enumerate(model_types):
-        mean_results[model_type] = {}
+        mean_results[model_type] = {"AUROC_1": {}, "AUPRC_1": {}, "AUROC_0": {}, "AUPRC_0": {}}
         for clf_name in classifiers:
             try:
                 clf = models.get_classifier(clf_name)
@@ -238,7 +255,10 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                 clf_result_pd = pd.DataFrame(columns=list(clf_results[0].keys()))
                 clf_result_pd = clf_result_pd.append(clf_results, ignore_index=True, sort=False).round(3)
                 clf_result_pd.to_csv("{}/{}_{}.csv".format(dataset_logdir, model_type, clf_name), index=False)
-                mean_results[model_type][clf_name] = round(clf_result_pd.AUROC.mean()*100,2)
+                mean_results[model_type]["AUROC_1"][clf_name] = round(clf_result_pd.AUROC_1.mean()*100,2)
+                mean_results[model_type]["AUPRC_1"][clf_name] = round(clf_result_pd.AUPRC_1.mean() * 100, 2)
+                mean_results[model_type]["AUROC_0"][clf_name] = round(clf_result_pd.AUROC_0.mean() * 100, 2)
+                mean_results[model_type]["AUPRC_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
             clf_results = None
         # plot results
         if mean_results[model_type]:

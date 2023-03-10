@@ -119,7 +119,8 @@ def sklearn(train_data,
         test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
         scores_1 = classifier.predict(test_data)
         scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
-        test_labels = np.concatenate(test_labels).flatten().tolist()
+        scores_0 = [1 - score_1 for score_1 in scores_1]
+        test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.rint(sc)] for sc in scores_1]
     elif isinstance(classifier, GaussianHMM):
         train_sequence_len = [len(sequence) for sequence in train_data]
@@ -127,7 +128,7 @@ def sklearn(train_data,
         classifier.fit(train_data, train_sequence_len)
         scores_assign = classifier.predict_proba(train_data, train_sequence_len)
         train_labels = np.concatenate(train_labels).flatten().tolist()
-        auroc_assign_cls = [metrics.roc_auc_score(train_labels, scores_assign[:, cls], multi_class="ovr") for cls in range(scores_assign.shape[1])]
+        auroc_assign_cls = [metrics.roc_auc_score(train_labels, scores_assign[:, cls]) for cls in range(scores_assign.shape[1])]
         label_1 = np.argmax(auroc_assign_cls)
         label_0 = 1 - label_1
         test_sequence_len = [len(sequence) for sequence in test_data]
@@ -135,7 +136,8 @@ def sklearn(train_data,
         scores = classifier.predict_proba(test_data, test_sequence_len)
         scores = scores[:, [label_0, label_1]]
         scores_1 = scores[:, 1]
-        test_labels = np.concatenate(test_labels).flatten().tolist()
+        scores_0 = scores[:, 0]
+        test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
         # TODO: save the label_0 and label_1 to use model for classification
     elif isinstance(classifier, CRF):
@@ -146,14 +148,16 @@ def sklearn(train_data,
         scores = classifier.predict_marginals(test_data)
         scores = np.array([[timestamp["0"], timestamp["1"]] for sequence in scores for timestamp in sequence])
         scores_1 = scores[:, 1]
+        scores_0 = scores[:, 0]
         if any(np.isnan(scores_1)):
             return classifier, None
-        test_labels = np.concatenate(test_labels).flatten().tolist()
+        test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     else:
         classifier.fit(train_data, train_labels)
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
+        scores_0 = scores[:, 0]
         predictions = [target_names[np.argmax(sc)] for sc in scores]
 
     # classification report
@@ -161,10 +165,17 @@ def sklearn(train_data,
                                                predictions,
                                                target_names=list(target_names.values()),
                                                output_dict=True)
-    auroc = metrics.roc_auc_score(test_labels, scores_1, multi_class="ovr")
+    confusion_mtx = metrics.confusion_matrix(test_labels, predictions)
+    auroc_1 = metrics.roc_auc_score(test_labels, scores_1)
+    auprc_1 = metrics.average_precision_score(test_labels, scores_1)
+    auroc_0 = metrics.roc_auc_score(1 - test_labels, scores_0)
+    auprc_0 = metrics.average_precision_score(1 - test_labels, scores_0)
 
     result = {}
-    result["AUROC"] = auroc
+    result["AUROC_1"] = auroc_1
+    result["AUPRC_1"] = auprc_1
+    result["AUROC_0"] = auroc_0
+    result["AUPRC_0"] = auprc_0
     for cls in cls_report.keys():
         if cls in target_names.values():
             result[f"Precision_{cls}"] = cls_report[cls]["precision"]
@@ -172,5 +183,6 @@ def sklearn(train_data,
             result[f"F1_{cls}"] = cls_report[cls]["f1-score"]
         elif cls == "accuracy":
             result["Accuracy"] = cls_report[cls]
+    result["C_ij(i=label,j=prediction)"]= confusion_mtx
 
     return classifier, result

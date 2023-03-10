@@ -62,6 +62,14 @@ NAN_MAX_COLS = ['of_gaze_0_x',
                 'of_pose_distance']
 
 
+MIGRAVE_GREY = [200, 200, 200]
+MIGRAVE_RED = [234, 74, 82]
+MIGRAVE_GREEN = [73, 164, 100]
+MIGRAVE_BLUE = [105, 172, 211]
+MIGRAVE_ORANGE = [255, 115, 74]
+MIGRAVE_PALETTE = [MIGRAVE_RED, MIGRAVE_GREEN, MIGRAVE_BLUE, MIGRAVE_ORANGE]
+
+
 def save_classifier(classifier, mean, std, classifier_name):
     """
     Save classifier
@@ -253,27 +261,39 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
     if not os.path.exists(imdir):
         os.makedirs(imdir)
 
-    fig, ax = plt.subplots()
-    size = 0.3
-    cmap = plt.get_cmap("BrBG")
+    for metric, means in results.items():
+        fig, ax = plt.subplots()
+        size = 0.3
+        cmap = plt.get_cmap("BrBG")
 
-    # reorder results based on auroc
-    results = dict(sorted(results.items(), key=lambda item: item[1], reverse=True))
-    num_of_plots = len(results)
-    colors = np.arange(cmap_idx * 10, cmap_idx * 10 + num_of_plots)*16
-    if cmap_idx % 2 != 0:
-        colors = np.flip(colors)
-    legend_names = ["_Hidden"]*num_of_plots*2
-    for i,clf in enumerate(results.keys()):
-        ax.pie([100-results[clf], results[clf]], radius=3-i*size,
-                colors=cmap([128,colors[i]]), startangle=90,
-                wedgeprops=dict(width=size, edgecolor='w'))
-        legend_names[i+i+1] = clf + f" ({results[clf]}%)"
+        # reorder results based on auroc
+        means = dict(sorted(means.items(), key=lambda item: item[1], reverse=True))
+        num_of_plots = len(means)
+        migrave_idx = cmap_idx % len(MIGRAVE_PALETTE)
+        color_gradient = get_color_gradient([255, 255, 255], MIGRAVE_PALETTE[migrave_idx], resolution=100)
+        legend_names = ["_Hidden"]*num_of_plots*2
+        for i,clf in enumerate(means.keys()):
+            ax.pie([100-means[clf], means[clf]], radius=3-i*size,
+                    colors=[cmap(128), color_gradient[int(means[clf])]], startangle=90,
+                    wedgeprops=dict(width=size, edgecolor='w'))
+            legend_names[i+i+1] = clf + f" ({means[clf]}%)"
 
-    ax.set(aspect="equal")
-    plt.rcParams['font.size'] = 14
-    plt.title(f"AUROC on {name} models", y=1.35)
-    plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
-    plt.savefig(os.path.join(imdir, name+".png"), bbox_inches='tight')
-    if show:
-        plt.show()
+        ax.set(aspect="equal")
+        plt.rcParams['font.size'] = 14
+        plt.title(f"{metric} on {name} models", y=1.35)
+        plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
+        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".png"), bbox_inches='tight')
+        if show:
+            plt.show()
+
+
+def get_color_gradient(color_1, color_2, resolution=100):
+    """
+    Returns a color gradient with n colors from tow RGB colors.
+    """
+    color_1_norm = np.array(color_1) / 255
+    color_2_norm = np.array(color_2) / 255
+    resolution_steps = np.linspace(0, 1, num=resolution, endpoint=True)
+    rgb_colors = [((1 - step) * color_1_norm + (step * color_2_norm)) for step in resolution_steps]
+    return [matplotlib.colors.to_hex(rgb_color) for rgb_color in rgb_colors]
+
