@@ -161,7 +161,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                 os.makedirs(logdir)
 
             utils.save_classifier(classifier, mean, std,
-                                  "{}/individualized_{}_trained_on_{}_train_percentage_{}.joblib".format(logdir,
+                                  "{}/individualized_{}_trained_on_{}_train_percentage_{}".format(logdir,
                                                                                                          classifier_name,
                                                                                                          p,
                                                                                                          tr_percentage))
