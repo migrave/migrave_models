@@ -160,7 +160,7 @@ def sklearn(train_data,
         test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     elif isinstance(classifier, xgboost.XGBClassifier):
-        train_data, valid_data, train_labels, valid_labels = train_test_split(train_data, test_data, test_size=0.1, shuffle=False)
+        train_data, valid_data, train_labels, valid_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
         classifier.fit(train_data, train_labels, eval_set=[(valid_data, valid_labels)])
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
