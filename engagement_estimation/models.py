@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 from sklearn import neighbors
+from sklearn.model_selection import train_test_split
 import sklearn.ensemble as ensemble
 import sklearn.naive_bayes as naive_bayes
 import sklearn.calibration as calibration
@@ -58,7 +59,12 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
                                       max_depth=6,
                                       booster='gbtree',
                                       n_jobs=-1,
-                                      eval_metric='logloss')
+                                      eval_metric='logloss',
+                                      early_stopping_rounds=10,
+                                      subsample=0.8,
+                                      colsample_bynode=0.8,
+                                      # scale_pos_weight=1 TODO: add weights sum(negative instances) / sum(positive instances)
+                                      )
     elif "adaboost" == model_name:
         model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100))
     elif "svm" == model_name:
@@ -152,6 +158,13 @@ def sklearn(train_data,
         if any(np.isnan(scores_1)):
             return classifier, None
         test_labels = np.concatenate(test_labels).flatten()
+        predictions = [target_names[np.argmax(sc)] for sc in scores]
+    elif isinstance(classifier, xgboost.XGBClassifier):
+        train_data, valid_data, train_labels, valid_labels = train_test_split(train_data, test_data, test_size=0.1, shuffle=False)
+        classifier.fit(train_data, train_labels, eval_set=[(valid_data, valid_labels)])
+        scores = classifier.predict_proba(test_data)
+        scores_1 = scores[:, 1]
+        scores_0 = scores[:, 0]
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     else:
         classifier.fit(train_data, train_labels)

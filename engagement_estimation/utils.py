@@ -67,7 +67,7 @@ MIGRAVE_RED = [234, 74, 82]
 MIGRAVE_GREEN = [73, 164, 100]
 MIGRAVE_BLUE = [105, 172, 211]
 MIGRAVE_ORANGE = [255, 115, 74]
-MIGRAVE_PALETTE = [MIGRAVE_RED, MIGRAVE_GREEN, MIGRAVE_BLUE, MIGRAVE_ORANGE]
+MIGRAVE_PALETTE = [MIGRAVE_RED, MIGRAVE_BLUE, MIGRAVE_GREEN, MIGRAVE_ORANGE]
 
 
 def save_classifier(classifier, mean, std, classifier_name):
@@ -283,7 +283,7 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
         plt.title(f"{metric} on {name} models", y=1.35)
         plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
         plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".png"), bbox_inches='tight')
-        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".pdf"), bbox_inches='tight')
+        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".svg"), bbox_inches='tight')
         if show:
             plt.show()
 
@@ -298,3 +298,16 @@ def get_color_gradient(color_1, color_2, resolution=100):
     rgb_colors = [((1 - step) * color_1_norm + (step * color_2_norm)) for step in resolution_steps]
     return [matplotlib.colors.to_hex(rgb_color) for rgb_color in rgb_colors]
 
+
+def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0"]):
+    results = {metric: {} for metric in metrics}
+    for file in os.listdir(logdir):
+        if file.endswith(".csv"):
+            file_name_chunks = os.path.splitext(os.path.basename(file))[0].split("_")
+            file_model_type = file_name_chunks[0]
+            if file_model_type == model_type:
+                file_model = "_".join(file_name_chunks[1:])
+                file_df = pd.read_csv(os.path.join(logdir, file))
+                for metric in results.keys():
+                    results[metric][file_model] = round(file_df[metric].mean() * 100, 2)
+    plot_results(results=results, cmap_idx=0, name=model_type, imdir=os.path.join(logdir, "images"))
