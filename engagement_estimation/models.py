@@ -80,7 +80,7 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
     elif "recurrent_neural_network" == model_name:
         model = keras.Sequential()
         model.add(keras.layers.Masking(mask_value=0.0))
-        model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh"))
+        model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh", dropout=0.2, recurrent_dropout=0.2))
         model.add(keras.layers.Dense(1, activation="sigmoid"))
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
     elif "hmm" == model_name:
