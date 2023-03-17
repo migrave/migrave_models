@@ -196,6 +196,6 @@ def sklearn(train_data,
             result[f"F1_{cls}"] = cls_report[cls]["f1-score"]
         elif cls == "accuracy":
             result["Accuracy"] = cls_report[cls]
-    result["C_ij(i=label,j=prediction)"]= confusion_mtx
+    result["C_ij(i=label,j=prediction)"] = confusion_mtx
 
     return classifier, result

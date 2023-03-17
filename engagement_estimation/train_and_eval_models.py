@@ -23,7 +23,6 @@ ALLOWED_MODALITIES = ["video", "audio", "game"]
 
 
 def train_generalized_model(df_data: pd.core.frame.DataFrame,
-                            classifier,
                             classifier_name: str,
                             participants: np.ndarray=[1,2,3,4],
                             logdir: str="./logs") -> List[Dict]:
@@ -65,6 +64,14 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
                 f"Only one class in test data. Excluded VP{p} for generalized model.")
             continue
 
+        try:
+            classifier = models.get_classifier(classifier_name)
+        except ValueError as exc:
+            Logger.error(str(exc))
+            Logger.warning(f"Skipping {classifier_name}")
+            continue
+        Logger.info(f"Training {classifier_name} on generalized data for participant {p} in test set")
+
         model, result = models.sklearn(train_data, train_labels,
                                        test_data, test_labels,
                                        classifier)
@@ -92,7 +99,6 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
 
 
 def train_individualized_model(df_data: pd.core.frame.DataFrame,
-                               classifier,
                                classifier_name: str,
                                participants: np.ndarray=[1,2,3,4],
                                train_percentage: Sequence[float]=[0.8, 0.9],
@@ -138,6 +144,13 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             if len(test_unique) == 1:
                 print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
+            try:
+                classifier = models.get_classifier(classifier_name)
+            except ValueError as exc:
+                Logger.error(str(exc))
+                Logger.warning(f"Skipping {classifier_name}")
+                continue
+            Logger.info(f"Training {classifier_name} on individualized data for VP {p} with train percentage {tr_percentage}")
 
             model, result = models.sklearn(train_data, train_labels,
                                            test_data, test_labels,
@@ -227,18 +240,9 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     for i, model_type in enumerate(model_types):
         mean_results[model_type] = {"AUROC_1": {}, "AUPRC_1": {}, "AUROC_0": {}, "AUPRC_0": {}}
         for clf_name in classifiers:
-            try:
-                clf = models.get_classifier(clf_name)
-            except ValueError as exc:
-                Logger.error(str(exc))
-                Logger.warning(f"Skipping {clf_name}")
-                continue
-
-            Logger.info(f"Training {clf_name} on {model_type} data")
             if "generalized" in model_type:
                 if len(participants) > 1:
                     clf_results = train_generalized_model(df_data_copy.copy(),
-                                                          clf,
                                                           clf_name,
                                                           participants=participants,
                                                           logdir=dataset_logdir)
@@ -246,7 +250,6 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                     Logger.warning(f"Number of participant < 2. Skipping training generalized model")
             elif "individualized" in model_type:
                 clf_results = train_individualized_model(df_data_copy.copy(),
-                                                         clf,
                                                          clf_name,
                                                          participants=participants,
                                                          logdir=dataset_logdir)
