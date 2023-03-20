@@ -125,6 +125,7 @@ def sklearn(train_data,
                 validation_data.append(sequence[idx:, :])
                 validation_labels.append(train_labels[i][idx:, :])
                 train_labels[i] = train_labels[i][:idx, :]
+            train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
             train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
             train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
             validation_data = keras.preprocessing.sequence.pad_sequences(validation_data, padding="post", dtype="float32", value=0.0)
@@ -133,7 +134,7 @@ def sklearn(train_data,
                                                                    value=0.0)
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
-        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
         class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
         class_weight[1] = 1 - class_weight[0]
         callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
