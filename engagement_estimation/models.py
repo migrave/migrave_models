@@ -89,7 +89,7 @@ def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.Rand
         model.add(keras.layers.Masking(mask_value=0.0))
         model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh", dropout=0.2, recurrent_dropout=0.2, kernel_constraint=keras.constraints.MaxNorm(3)))
         model.add(keras.layers.Dense(1, activation="sigmoid"))
-        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
+        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"], sample_weight_mode="temporal")
     elif "hmm" == model_name:
         model = GaussianHMM(n_components=2, algorithm="viterbi")
     elif "crf" == model_name:
@@ -116,6 +116,7 @@ def sklearn(train_data,
       Classifier and dictionary containing the results
     """
     if isinstance(classifier, keras.Sequential):
+        callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
         if sequence_model:
             validation_data = []
             validation_labels = []
@@ -126,23 +127,25 @@ def sklearn(train_data,
                 validation_labels.append(train_labels[i][idx:, :])
                 train_labels[i] = train_labels[i][:idx, :]
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
+            class_weight[1] = 1 - class_weight[0]
+            sample_weight = [[class_weight[label[0]] for label in sequence] for sequence in train_labels]
             train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
             train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
             validation_data = keras.preprocessing.sequence.pad_sequences(validation_data, padding="post", dtype="float32", value=0.0)
             validation_labels = keras.preprocessing.sequence.pad_sequences(validation_labels, padding="post", dtype="float32", value=0.0)
-            test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32",
-                                                                   value=0.0)
+            test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
+            sample_weight = keras.preprocessing.sequence.pad_sequences(sample_weight, padding="post", dtype="float32", value=0.0)
+            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], sample_weight=sample_weight)
+            scores_1 = classifier.predict(test_data)
+            scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-        class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
-        class_weight[1] = 1 - class_weight[0]
-        callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
-        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
-        scores_1 = classifier.predict(test_data)
-        if sequence_model:
-            scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
-        else:
+            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
+            class_weight[1] = 1 - class_weight[0]
+            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
+            scores_1 = classifier.predict(test_data)
             scores_1 = [score[0] for score in scores_1]
         scores_0 = [1 - score_1 for score_1 in scores_1]
         test_labels = np.concatenate(test_labels).flatten()
