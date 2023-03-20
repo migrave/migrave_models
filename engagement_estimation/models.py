@@ -133,7 +133,6 @@ def sklearn(train_data,
                                                                    value=0.0)
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
-        train_labels_flat = np.concatenate(train_labels).flatten()
         train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
         class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
         class_weight[1] = 1 - class_weight[0]
