@@ -1,7 +1,6 @@
 from typing import Union
 
 import numpy as np
-import pandas as pd
 from sklearn import metrics
 from sklearn import neighbors
 from sklearn.model_selection import train_test_split
@@ -23,7 +22,7 @@ ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
 SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
 
 
-def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
+def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
                                              ensemble.AdaBoostClassifier,
                                              calibration.CalibratedClassifierCV,
@@ -53,7 +52,8 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
         model = ensemble.RandomForestClassifier(n_estimators=100,
                                                 max_depth=None,
                                                 max_features=None,
-                                                n_jobs=-1)
+                                                n_jobs=-1,
+                                                class_weight="balanced")
     elif "xgboost" == model_name:
         model = xgboost.XGBClassifier(n_estimators=100,
                                       max_depth=6,
@@ -63,24 +63,31 @@ def get_classifier(model_name: str) -> Union[ensemble.RandomForestClassifier,
                                       early_stopping_rounds=10,
                                       subsample=0.8,
                                       colsample_bynode=0.8,
-                                      # scale_pos_weight=1 TODO: add weights sum(negative instances) / sum(positive instances)
+                                      scale_pos_weight=n_class_0 / n_class_1,
+                                      max_delta_step=1
                                       )
     elif "adaboost" == model_name:
-        model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100))
+        model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100, class_weight="balanced"))
     elif "svm" == model_name:
-        model = calibration.CalibratedClassifierCV(svm.LinearSVC())
+        model = calibration.CalibratedClassifierCV(svm.LinearSVC(class_weight="balanced"))
     elif "knn" == model_name:
         model = neighbors.KNeighborsClassifier(n_neighbors=5)
     elif "naive_bayes" == model_name:
         model = naive_bayes.GaussianNB()
     elif "logistic_regression" == model_name:
-        model = linear_model.LogisticRegression(penalty='l2', solver='liblinear')
+        model = linear_model.LogisticRegression(penalty='l2', solver='liblinear', class_weight="balanced")
     elif "neural_network" == model_name:
-        model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
+        # model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
+        # add keras mlp as sklearn mlp does not support class weights yet
+        model = keras.Sequential()
+        model.add(keras.layers.Dense(100, activation="relu", kernel_constraint=keras.constraints.MaxNorm(3)))
+        model.add(keras.layers.Dropout(0.2))
+        model.add(keras.layers.Dense(1, activation="sigmoid"))
+        model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
     elif "recurrent_neural_network" == model_name:
         model = keras.Sequential()
         model.add(keras.layers.Masking(mask_value=0.0))
-        model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh", dropout=0.2, recurrent_dropout=0.2))
+        model.add(keras.layers.LSTM(100, return_sequences=True, activation="tanh", dropout=0.2, recurrent_dropout=0.2, kernel_constraint=keras.constraints.MaxNorm(3)))
         model.add(keras.layers.Dense(1, activation="sigmoid"))
         model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
     elif "hmm" == model_name:
@@ -95,6 +102,7 @@ def sklearn(train_data,
             test_data,
             test_labels,
             classifier,
+            sequence_model,
             target_names={0:0, 1:1}):
     """
     Train classifier
@@ -108,23 +116,34 @@ def sklearn(train_data,
       Classifier and dictionary containing the results
     """
     if isinstance(classifier, keras.Sequential):
-        validation_data = []
-        validation_labels = []
-        for i, sequence in enumerate(train_data):
-            idx = int(sequence.shape[0] * 0.9)
-            train_data[i] = sequence[:idx, :]
-            validation_data.append(sequence[idx:, :])
-            validation_labels.append(train_labels[i][idx:, :])
-            train_labels[i] = train_labels[i][:idx, :]
-        train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
-        train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
-        validation_data = keras.preprocessing.sequence.pad_sequences(validation_data, padding="post", dtype="float32", value=0.0)
-        validation_labels = keras.preprocessing.sequence.pad_sequences(validation_labels, padding="post", dtype="float32", value=0.0)
+        if sequence_model:
+            validation_data = []
+            validation_labels = []
+            for i, sequence in enumerate(train_data):
+                idx = int(sequence.shape[0] * 0.9)
+                train_data[i] = sequence[:idx, :]
+                validation_data.append(sequence[idx:, :])
+                validation_labels.append(train_labels[i][idx:, :])
+                train_labels[i] = train_labels[i][:idx, :]
+            train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
+            train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
+            validation_data = keras.preprocessing.sequence.pad_sequences(validation_data, padding="post", dtype="float32", value=0.0)
+            validation_labels = keras.preprocessing.sequence.pad_sequences(validation_labels, padding="post", dtype="float32", value=0.0)
+            test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32",
+                                                                   value=0.0)
+        else:
+            train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
+        train_labels_flat = np.concatenate(train_labels).flatten()
+        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+        class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
+        class_weight[1] = 1 - class_weight[0]
         callback = keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=1e-4, patience=10)
-        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback])
-        test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
+        classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
         scores_1 = classifier.predict(test_data)
-        scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
+        if sequence_model:
+            scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
+        else:
+            scores_1 = [score[0] for score in scores_1]
         scores_0 = [1 - score_1 for score_1 in scores_1]
         test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.rint(sc)] for sc in scores_1]
