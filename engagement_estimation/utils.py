@@ -187,7 +187,10 @@ def normalize_data(data: pd.core.frame.DataFrame,
         data_max[c] = col_max
         data_min[c] = col_min
 
-        data_copy[c] = (data_copy[c] - col_min) / (col_max - col_min)
+        if abs(col_max - col_min) < 1e-10:
+            data_copy[c] = (data_copy[c] - col_min)
+        else:
+            data_copy[c] = (data_copy[c] - col_min) / (col_max - col_min)
 
         # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
         if c not in NAN_MAX_COLS:
