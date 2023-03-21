@@ -182,7 +182,7 @@ def normalize_data(data: pd.core.frame.DataFrame,
         else:
             col_max = max[c]
             col_min = min[c]
-            data_copy.clip(col_min, col_max)
+            data_copy[c].clip(col_min, col_max, inplace=True)
 
         data_max[c] = col_max
         data_min[c] = col_min
