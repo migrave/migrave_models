@@ -70,7 +70,7 @@ MIGRAVE_ORANGE = [255, 115, 74]
 MIGRAVE_PALETTE = [MIGRAVE_RED, MIGRAVE_BLUE, MIGRAVE_GREEN, MIGRAVE_ORANGE]
 
 
-def save_classifier(classifier, mean, std, classifier_name):
+def save_classifier(classifier, max, min, classifier_name):
     """
     Save classifier
     Input:
@@ -82,10 +82,10 @@ def save_classifier(classifier, mean, std, classifier_name):
     if isinstance(classifier, keras.Sequential):
         classifier.save(classifier_name + ".h5")
         with open(classifier_name + ".joblib", 'wb') as f:
-            joblib.dump([mean, std], f, protocol=2)
+            joblib.dump([max, min], f, protocol=2)
     else:
         with open(classifier_name + ".joblib", 'wb') as f:
-            joblib.dump([classifier, mean, std], f, protocol=2)
+            joblib.dump([classifier, max, min], f, protocol=2)
 
 
 # Some codes are based on
@@ -146,6 +146,60 @@ def standardize_data(data: pd.core.frame.DataFrame,
     return data_copy, data_mean, data_std
 
 
+def normalize_data(data: pd.core.frame.DataFrame,
+                   max: Dict[str, float] = None,
+                   min: Dict[str, float] = None) -> Tuple[pd.core.frame.DataFrame,
+                                                          Dict[str, float],
+                                                          Dict[str, float]]:
+    """Normalises each column with respect to the mean and standard deviation,
+    and fills NaN values with the maximum column value. If mean and std are None,
+    calculates the column means and standard deviations from the data; otherwise,
+    uses the provided values for normalisation.
+
+    Returns:
+    * the normalised data
+    * a dictionary of column names and mean values (the same as 'mean' if 'mean' is given)
+    * a dictionary of column names and standard deviations (the same as 'std' if 'std' is given)
+
+    Keyword arguments:
+    @param data: pd.core.frame.DataFrame -- data to be normalised
+    @param mean: Dict[str, float] -- dictionary of column names and column means
+                                     (default None, in which case the means are
+                                      calculated from the data)
+    @param std: Dict[str, float] -- dictionary of column names and column standard deviations
+                                    (default None, in which case the standard deviations are
+                                     calculated from the data)
+
+    """
+    data_max = {}
+    data_min = {}
+    data_copy = data.copy()
+    for c in data.columns:
+        # compute man and std while ignoring nan
+        if max is None and min is None:
+            col_max = np.nanmax(data_copy[c])
+            col_min = np.nanmin(data_copy[c])
+        else:
+            col_max = max[c]
+            col_min = min[c]
+            data_copy.clip(col_min, col_max)
+
+        data_max[c] = col_max
+        data_min[c] = col_min
+
+        data_copy[c] = (data_copy[c] - col_min) / (col_max - col_min)
+
+        # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
+        if c not in NAN_MAX_COLS:
+            min_val = np.nanmin(data_copy[c])
+            data_copy[c] = data_copy[c].fillna(min_val)
+        else:
+            max_val = np.nanmax(data_copy[c])
+            data_copy[c] = data_copy[c].fillna(max_val)
+
+    return data_copy, data_max, data_min
+
+
 def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False):
     """
     Train on other users
@@ -171,8 +225,8 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         train_data = train_data.drop(columns=NON_FEATURES_COLS)
         test_data = test_data.drop(columns=NON_FEATURES_COLS)
 
-    train_data, train_mean, train_std = standardize_data(train_data)
-    test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
+    train_data, train_max, train_min = normalize_data(train_data)
+    test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
     if sequence_model:
         data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
@@ -190,7 +244,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     # shuffle data
     train_data, train_labels = shuffle(train_data, train_labels)
 
-    return train_data, train_labels, test_data, test_labels, train_mean, train_std
+    return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
 def split_individualized_data(dataframe,
@@ -224,8 +278,8 @@ def split_individualized_data(dataframe,
         train_data = train_data.drop(columns=NON_FEATURES_COLS)
         test_data = test_data.drop(columns=NON_FEATURES_COLS)
 
-    train_data, train_mean, train_std = standardize_data(train_data)
-    test_data, _, _ = standardize_data(test_data, mean=train_mean, std=train_std)
+    train_data, train_max, train_min = normalize_data(train_data)
+    test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
     if sequence_model:
         session_groups = data.groupby(["participant", 'session_num'])
@@ -246,7 +300,7 @@ def split_individualized_data(dataframe,
 
     train_data, train_labels = shuffle(train_data, train_labels)
 
-    return train_data, train_labels, test_data, test_labels, train_mean, train_std
+    return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
@@ -299,7 +353,7 @@ def get_color_gradient(color_1, color_2, resolution=100):
     return [matplotlib.colors.to_hex(rgb_color) for rgb_color in rgb_colors]
 
 
-def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0"]):
+def plot_from_log(logdir, model_type="generalized", metrics=["Precision_0"]):
     results = {metric: {} for metric in metrics}
     for file in os.listdir(logdir):
         if file.endswith(".csv"):
