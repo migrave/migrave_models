@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
-from sklearn.decomposition import PCA
 from tensorflow import keras
 
 
@@ -71,7 +70,7 @@ MIGRAVE_ORANGE = [255, 115, 74]
 MIGRAVE_PALETTE = [MIGRAVE_RED, MIGRAVE_BLUE, MIGRAVE_GREEN, MIGRAVE_ORANGE]
 
 
-def save_classifier(classifier, max, min, pca, classifier_name):
+def save_classifier(classifier, max, min, classifier_name):
     """
     Save classifier
     Input:
@@ -83,10 +82,10 @@ def save_classifier(classifier, max, min, pca, classifier_name):
     if isinstance(classifier, keras.Sequential):
         classifier.save(classifier_name + ".h5")
         with open(classifier_name + ".joblib", 'wb') as f:
-            joblib.dump([max, min, pca], f, protocol=2)
+            joblib.dump([max, min], f, protocol=2)
     else:
         with open(classifier_name + ".joblib", 'wb') as f:
-            joblib.dump([classifier, max, min, pca], f, protocol=2)
+            joblib.dump([classifier, max, min], f, protocol=2)
 
 
 # Some codes are based on
@@ -232,12 +231,6 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     train_data, train_max, train_min = normalize_data(train_data)
     test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
-    n_components = 64
-    pca = PCA(n_components=n_components)
-    pca_columns = [f"PC_{i}" for i in range(n_components)]
-    train_data = pd.DataFrame(pca.fit_transform(train_data), index=train_data.index, columns=pca_columns)
-    test_data = pd.DataFrame(pca.transform(test_data), index=test_data.index, columns=pca_columns)
-
     if sequence_model:
         data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
         session_groups = data.groupby(["participant", 'session_num'])
@@ -254,7 +247,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     # shuffle data
     train_data, train_labels = shuffle(train_data, train_labels)
 
-    return train_data, train_labels, test_data, test_labels, train_max, train_min, pca
+    return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
 def split_individualized_data(dataframe,
@@ -291,12 +284,6 @@ def split_individualized_data(dataframe,
     train_data, train_max, train_min = normalize_data(train_data)
     test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
-    n_components = 64
-    pca = PCA(n_components=n_components)
-    pca_columns = [f"PC_{i}" for i in range(n_components)]
-    train_data = pd.DataFrame(pca.fit_transform(train_data), index=train_data.index, columns=pca_columns)
-    test_data = pd.DataFrame(pca.transform(test_data), index=test_data.index, columns=pca_columns)
-
     if sequence_model:
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
@@ -316,7 +303,7 @@ def split_individualized_data(dataframe,
 
     train_data, train_labels = shuffle(train_data, train_labels)
 
-    return train_data, train_labels, test_data, test_labels, train_max, train_min, pca
+    return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
