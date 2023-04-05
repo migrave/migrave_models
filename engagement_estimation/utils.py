@@ -1,6 +1,7 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 import os
 
+from pathlib import Path
 import joblib
 import matplotlib.pyplot as plt
 import matplotlib
@@ -356,7 +357,7 @@ def get_color_gradient(color_1, color_2, resolution=100):
     return [matplotlib.colors.to_hex(rgb_color) for rgb_color in rgb_colors]
 
 
-def plot_from_log(logdir, model_type="generalized", metrics=["Precision_0"]):
+def get_results(logdir, model_type, metrics):
     results = {metric: {} for metric in metrics}
     for file in os.listdir(logdir):
         if file.endswith(".csv"):
@@ -367,4 +368,32 @@ def plot_from_log(logdir, model_type="generalized", metrics=["Precision_0"]):
                 file_df = pd.read_csv(os.path.join(logdir, file))
                 for metric in results.keys():
                     results[metric][file_model] = round(file_df[metric].mean() * 100, 2)
+    return results
+
+
+def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0"]):
+    results = get_results(logdir, model_type, metrics)
     plot_results(results=results, cmap_idx=0, name=model_type, imdir=os.path.join(logdir, "images"))
+
+
+def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
+    logdirs = [Path(logdir) for logdir in logdirs]
+    summary_results = {metric: {} for metric in metrics}
+    for modality_dir in logdirs:
+        modalities = modality_dir.name.split("_")
+        if "video" in modalities:
+            for perspective_dir in modality_dir.iterdir():
+                if perspective_dir.is_dir():
+                    modality_key = "-".join([modality_dir.name, perspective_dir.name])
+                    modality_result = get_results(perspective_dir, model_type, metrics)
+                    for metric in summary_results.keys():
+                        model_max_result = max(modality_result[metric], key=modality_result[metric].get)
+                        summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][
+                            model_max_result]
+        else:
+            modality_key = modality_dir.name
+            modality_result = get_results(modality_dir, model_type, metrics)
+        for metric in summary_results.keys():
+            model_max_result = max(modality_result[metric], key=modality_result[metric].get)
+            summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][model_max_result]
+    plot_results(results=summary_results, cmap_idx=0, name=model_type, imdir=os.path.join(out_dir, "images_summary"))

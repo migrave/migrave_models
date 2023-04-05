@@ -44,6 +44,9 @@ def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.Rand
     @param model_name: str -- name of the classifier to be instantiated
 
     """
+    scale_pos_weight = (n_class_0 * 2) / n_class_1
+    scale_neg_weight = 1 - scale_pos_weight
+    class_weight = {0: scale_pos_weight, 1: scale_pos_weight}
     if model_name not in ALLOWED_CLASSIFIERS:
         raise ValueError(f"Classifier {model_name} is not supported")
 
@@ -53,7 +56,7 @@ def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.Rand
                                                 max_depth=None,
                                                 max_features=None,
                                                 n_jobs=-1,
-                                                class_weight="balanced")
+                                                class_weight=class_weight)
     elif "xgboost" == model_name:
         model = xgboost.XGBClassifier(n_estimators=100,
                                       max_depth=6,
@@ -63,19 +66,19 @@ def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.Rand
                                       early_stopping_rounds=10,
                                       subsample=0.8,
                                       colsample_bynode=0.8,
-                                      scale_pos_weight=n_class_0 / n_class_1,
+                                      scale_pos_weight=scale_pos_weight,
                                       max_delta_step=1
                                       )
     elif "adaboost" == model_name:
-        model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100, class_weight="balanced"))
+        model = ensemble.AdaBoostClassifier(ensemble.RandomForestClassifier(n_estimators=100, class_weight=class_weight))
     elif "svm" == model_name:
-        model = calibration.CalibratedClassifierCV(svm.LinearSVC(class_weight="balanced"))
+        model = calibration.CalibratedClassifierCV(svm.LinearSVC(class_weight=class_weight))
     elif "knn" == model_name:
         model = neighbors.KNeighborsClassifier(n_neighbors=5)
     elif "naive_bayes" == model_name:
         model = naive_bayes.GaussianNB()
     elif "logistic_regression" == model_name:
-        model = linear_model.LogisticRegression(penalty='l2', solver='liblinear', class_weight="balanced")
+        model = linear_model.LogisticRegression(penalty='l2', solver='liblinear', class_weight=class_weight)
     elif "neural_network" == model_name:
         # model = neural_network.MLPClassifier(hidden_layer_sizes=(100,), activation="relu", solver="adam", early_stopping=True)
         # add keras mlp as sklearn mlp does not support class weights yet
@@ -127,7 +130,7 @@ def sklearn(train_data,
                 validation_labels.append(train_labels[i][idx:, :])
                 train_labels[i] = train_labels[i][:idx, :]
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
+            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts) * 2}
             class_weight[1] = 1 - class_weight[0]
             sample_weight = [[class_weight[label[0]] for label in sequence] for sequence in train_labels]
             train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
@@ -142,7 +145,7 @@ def sklearn(train_data,
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts)}
+            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts) * 2}
             class_weight[1] = 1 - class_weight[0]
             classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
             scores_1 = classifier.predict(test_data)
