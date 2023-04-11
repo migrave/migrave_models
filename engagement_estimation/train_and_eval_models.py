@@ -1,6 +1,7 @@
 from typing import Sequence, Dict, List
 
 import os
+import sys
 import shutil
 import warnings
 import argparse
@@ -26,6 +27,7 @@ ALLOWED_MODALITIES = ["video", "audio", "game"]
 def train_generalized_model(df_data: pd.core.frame.DataFrame,
                             classifier_name: str,
                             participants: np.ndarray=[1,2,3,4],
+                            minority_weight_factor=1,
                             logdir: str="./logs") -> List[Dict]:
     """Trains a generalized engagement model (i.e. a model trained on date from
     multiple users). Evaluates the trained model using leave-one-out cross validation
@@ -66,7 +68,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
             continue
 
         try:
-            classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique)])
+            classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique), minority_weight_factor])
         except ValueError as exc:
             Logger.error(str(exc))
             Logger.warning(f"Skipping {classifier_name}")
@@ -75,7 +77,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
 
         model, result = models.sklearn(train_data, train_labels,
                                        test_data, test_labels,
-                                       classifier, sequence_model)
+                                       classifier, sequence_model, minority_weight_factor)
         if result is None:
             print(f"Faulty prediction. Excluded VP{p} for generalized model.")
             continue
@@ -103,6 +105,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                classifier_name: str,
                                participants: np.ndarray=[1,2,3,4],
                                train_percentage: Sequence[float]=[0.8, 0.9],
+                               minority_weight_factor=1,
                                logdir: str="./logs") -> List[Dict]:
     """Trains individualized models (one model for each participant),
     using different train/test split percentages.
@@ -146,7 +149,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                 print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
             try:
-                classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique)])
+                classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique), minority_weight_factor])
             except ValueError as exc:
                 Logger.error(str(exc))
                 Logger.warning(f"Skipping {classifier_name}")
@@ -155,7 +158,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
 
             model, result = models.sklearn(train_data, train_labels,
                                            test_data, test_labels,
-                                           classifier, sequence_model)
+                                           classifier, sequence_model, minority_weight_factor)
             if result is None:
                 print(f"Faulty prediction. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
@@ -216,14 +219,6 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     dataset_stems = []
     features = utils.NON_FEATURES_COLS.copy()
 
-    dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
-    answer = ""
-    print(f"Results will be saved to path {dataset_logdir}")
-    if os.path.exists(dataset_logdir):
-        print(f"WARNING: Path {dataset_logdir} already exists. Existing files might be overwritten.")
-    while answer not in ["Y", "n"]:
-        answer = input("Continue? [Y/n]? ")
-
     df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_VISUAL_FEATURES)
     if "video" in modalities:
         for dataset_file in dataset_files:
@@ -237,6 +232,16 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         features.extend(utils.MIGRAVE_AUDIAL_FEATURES)
     if "game" in modalities:
         features.extend(utils.MIGRAVE_GAME_FEATURES)
+
+    dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
+    answer = ""
+    print(f"Results will be saved to path {dataset_logdir}")
+    if os.path.exists(dataset_logdir):
+        print(f"WARNING: Path {dataset_logdir} already exists. Existing files might be overwritten.")
+    while answer not in ["Y", "n"]:
+        answer = input("Continue? [Y/n]? ")
+    if answer == "n":
+        sys.exit(0)
 
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
@@ -256,6 +261,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                 if len(participants) > 1:
                     clf_results = train_generalized_model(df_data_copy.copy(),
                                                           clf_name,
+                                                          minority_weight_factor=minority_weight_factor,
                                                           participants=participants,
                                                           logdir=dataset_logdir)
                 else:
@@ -263,6 +269,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
             elif "individualized" in model_type:
                 clf_results = train_individualized_model(df_data_copy.copy(),
                                                          clf_name,
+                                                         minority_weight_factor=minority_weight_factor,
                                                          participants=participants,
                                                          logdir=dataset_logdir)
             # save results
