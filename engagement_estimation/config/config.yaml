@@ -19,4 +19,4 @@ modalities:
 datasets:
     - features_video_right.csv
 minority_weight_factor: 10
-experiment_name: minority_weight_relative_10
+experiment_name: minority_weight_factor_10
