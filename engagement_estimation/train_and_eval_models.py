@@ -68,7 +68,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
             continue
 
         try:
-            classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique), minority_weight_factor])
+            classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique)], minority_weight_factor)
         except ValueError as exc:
             Logger.error(str(exc))
             Logger.warning(f"Skipping {classifier_name}")
@@ -149,7 +149,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                 print(f"Only one class in test data. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
             try:
-                classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique), minority_weight_factor])
+                classifier = models.get_classifier(classifier_name, train_counts[np.argmin(train_unique)], train_counts[np.argmax(train_unique)], minority_weight_factor)
             except ValueError as exc:
                 Logger.error(str(exc))
                 Logger.warning(f"Skipping {classifier_name}")
