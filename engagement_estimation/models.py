@@ -22,7 +22,7 @@ ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
 SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
 
 
-def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.RandomForestClassifier,
+def get_classifier(model_name: str, n_class_0, n_class_1, minority_weight_factor) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
                                              ensemble.AdaBoostClassifier,
                                              calibration.CalibratedClassifierCV,
@@ -44,9 +44,9 @@ def get_classifier(model_name: str, n_class_0, n_class_1) -> Union[ensemble.Rand
     @param model_name: str -- name of the classifier to be instantiated
 
     """
-    scale_pos_weight = (n_class_0 * 2) / n_class_1
+    scale_pos_weight = n_class_0 / (n_class_0 + n_class_1) / minority_weight_factor
     scale_neg_weight = 1 - scale_pos_weight
-    class_weight = {0: scale_pos_weight, 1: scale_pos_weight}
+    class_weight = {0: scale_neg_weight, 1: scale_pos_weight}
     if model_name not in ALLOWED_CLASSIFIERS:
         raise ValueError(f"Classifier {model_name} is not supported")
 
@@ -106,6 +106,7 @@ def sklearn(train_data,
             test_labels,
             classifier,
             sequence_model,
+            minority_weight_factor,
             target_names={0:0, 1:1}):
     """
     Train classifier
@@ -130,8 +131,8 @@ def sklearn(train_data,
                 validation_labels.append(train_labels[i][idx:, :])
                 train_labels[i] = train_labels[i][:idx, :]
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts) * 2}
-            class_weight[1] = 1 - class_weight[0]
+            class_weight = {1: train_counts[np.argmin(train_unique)] / np.sum(train_counts) / minority_weight_factor}
+            class_weight[0] = 1 - class_weight[1]
             sample_weight = [[class_weight[label[0]] for label in sequence] for sequence in train_labels]
             train_data = keras.preprocessing.sequence.pad_sequences(train_data, padding="post", dtype="float32", value=0.0)
             train_labels = keras.preprocessing.sequence.pad_sequences(train_labels, padding="post", dtype="float32", value=0.0)
@@ -145,8 +146,8 @@ def sklearn(train_data,
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-            class_weight = {0: train_counts[np.argmax(train_unique)] / np.sum(train_counts) * 2}
-            class_weight[1] = 1 - class_weight[0]
+            class_weight = {1: train_counts[np.argmin(train_unique)] / np.sum(train_counts) / minority_weight_factor}
+            class_weight[0] = 1 - class_weight[1]
             classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
             scores_1 = classifier.predict(test_data)
             scores_1 = [score[0] for score in scores_1]

@@ -1,6 +1,7 @@
 from typing import Sequence, Dict, List
 
 import os
+import shutil
 import warnings
 import argparse
 import pandas as pd
@@ -205,6 +206,8 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         Logger.error(str(exc))
         return
 
+    minority_weight_factor = config["minority_weight_factor"]
+    experiment_name = config["experiment_name"]
     datasets = config["datasets"]
     modalities = config["modalities"]
     classifiers = config["models"]
@@ -212,6 +215,14 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
     dataset_stems = []
     features = utils.NON_FEATURES_COLS.copy()
+
+    dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
+    answer = ""
+    print(f"Results will be saved to path {dataset_logdir}")
+    if os.path.exists(dataset_logdir):
+        print(f"WARNING: Path {dataset_logdir} already exists. Existing files might be overwritten.")
+    while answer not in ["Y", "n"]:
+        answer = input("Continue? [Y/n]? ")
 
     df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_VISUAL_FEATURES)
     if "video" in modalities:
@@ -227,9 +238,10 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     if "game" in modalities:
         features.extend(utils.MIGRAVE_GAME_FEATURES)
 
-    dataset_logdir = os.path.join(logdir, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
+
+    shutil.copyfile(config_path, os.path.join(dataset_logdir, os.path.basename(config)))
 
     participants = np.sort(df_data.participant.unique())
 

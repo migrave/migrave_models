@@ -397,3 +397,5 @@ def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=
             model_max_result = max(modality_result[metric], key=modality_result[metric].get)
             summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][model_max_result]
     plot_results(results=summary_results, cmap_idx=0, name=model_type, imdir=os.path.join(out_dir, "images_summary"))
+# TODO: add output dir with experiment name to config
+# TODO: add class weight option to config
