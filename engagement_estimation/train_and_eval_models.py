@@ -246,7 +246,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
 
-    shutil.copyfile(config_path, os.path.join(dataset_logdir, os.path.basename(config)))
+    shutil.copyfile(config_path, os.path.join(dataset_logdir, os.path.basename(config_path)))
 
     participants = np.sort(df_data.participant.unique())
 
