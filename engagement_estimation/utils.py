@@ -62,6 +62,7 @@ NAN_MAX_COLS = ['of_gaze_0_x',
                 'of_pose_Tz',
                 'of_pose_distance']
 
+ALLOWED_DATASETS = ["features_video_left", "features_video_right", "features_video_color"]
 
 MIGRAVE_GREY = [200, 200, 200]
 MIGRAVE_RED = [234, 74, 82]
@@ -211,7 +212,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         dataframe: dataset
         idx: Index of participat to be used as test set
     Return:
-        train_data, train_labels, test_data, test_labels, train_data_mean, train_data_std
+        train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.copy()
     data = data.sort_values(['session_num', 'timestamp'], ascending=[True, True])
@@ -263,7 +264,7 @@ def split_individualized_data(dataframe,
         idx: Index of participat to be trained on
         train_percentage: a list of train percentage
     Return:
-        train_data, train_labels, test_data, test_labels, train_data_mean, train_data_std
+        train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.loc[dataframe["participant"] == idx].copy()
 
@@ -307,6 +308,28 @@ def split_individualized_data(dataframe,
     return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
+def merge_datasets(dataset_files, modalities):
+    dataset_stems = []
+    features = NON_FEATURES_COLS.copy()
+    df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=MIGRAVE_VISUAL_FEATURES)
+    if "video" in modalities:
+        for dataset_file in dataset_files:
+            df_data_visual = pd.read_csv(dataset_file, index_col=0)[MIGRAVE_VISUAL_FEATURES + JOIN_FEATURES_COLS]
+            dataset_stem = os.path.splitext(os.path.basename(dataset_file))[0]
+            dataset_stems.append(dataset_stem)
+            df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in MIGRAVE_VISUAL_FEATURES})
+            df_data = df_data.merge(right=df_data_visual, on=JOIN_FEATURES_COLS)
+            features.extend(["_".join([c, dataset_stem]) for c in MIGRAVE_VISUAL_FEATURES])
+    if "audio" in modalities:
+        features.extend(MIGRAVE_AUDIAL_FEATURES)
+    if "game" in modalities:
+        features.extend(MIGRAVE_GAME_FEATURES)
+    dataset_stems = [dataset_stem for dataset_stem in ALLOWED_DATASETS if dataset_stem in dataset_stems]
+    df_data_copy = df_data[features].copy()
+
+    return df_data_copy, dataset_stems
+
+
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
     """
     Input:
@@ -328,7 +351,7 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
         means = dict(sorted(means.items(), key=lambda item: item[1], reverse=True))
         num_of_plots = len(means)
         migrave_idx = cmap_idx % len(MIGRAVE_PALETTE)
-        color_gradient = get_color_gradient([255, 255, 255], MIGRAVE_PALETTE[migrave_idx], resolution=100)
+        color_gradient = get_color_gradient([255, 255, 255], MIGRAVE_PALETTE[migrave_idx], resolution=101)
         legend_names = ["_Hidden"]*num_of_plots*2
         for i,clf in enumerate(means.keys()):
             ax.pie([100-means[clf], means[clf]], radius=3-i*size,
@@ -371,10 +394,9 @@ def get_results(logdir, model_type, metrics):
     return results
 
 
-def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0"]):
+def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0", "Precision_0"]):
     results = get_results(logdir, model_type, metrics)
     plot_results(results=results, cmap_idx=0, name=model_type, imdir=os.path.join(logdir, "images"))
-
 
 def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
     logdirs = [Path(logdir) for logdir in logdirs]
@@ -397,5 +419,3 @@ def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=
             model_max_result = max(modality_result[metric], key=modality_result[metric].get)
             summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][model_max_result]
     plot_results(results=summary_results, cmap_idx=0, name=model_type, imdir=os.path.join(out_dir, "images_summary"))
-# TODO: add output dir with experiment name to config
-# TODO: add class weight option to config

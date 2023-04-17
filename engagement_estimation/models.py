@@ -21,6 +21,8 @@ ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
 
 SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
 
+KERAS_CLASSIFIERS = ["recurrent_neural_network", "hmm"]
+
 
 def get_classifier(model_name: str, n_class_0, n_class_1, minority_weight_factor) -> Union[ensemble.RandomForestClassifier,
                                              xgboost.XGBClassifier,
