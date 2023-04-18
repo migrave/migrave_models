@@ -164,19 +164,18 @@ def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str,
     """
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
-    participant_id_dir = None
-    for participants_dir in data_dir.iterdir():
-        if participants_dir.is_dir():
-            if participants_dir.name.startswith(f"VP{participant_id:02}"):
-                participant_id_dir = participants_dir
-                continue
-    session_dir = participant_id_dir.joinpath(date_time)
+    participant_id_dirs = [participant_id_dir for participant_id_dir in data_dir.iterdir() if participant_id_dir.is_dir() and participant_id_dir.name.startswith(f"VP{participant_id:02}")]
+    session_dir = None
+    for participant_id_dir in participant_id_dirs:
+        if participant_id_dir.joinpath(date_time).is_dir():
+            session_dir = participant_id_dir.joinpath(date_time)
+            break
     video = None
     for video_file in session_dir.iterdir():
         if video_file.is_file() and video_file.suffix == ".mp4":
             if perspective in video_file.name:
                 video = video_file
-                continue
+                break
 
     return video
 
@@ -284,6 +283,17 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             output_video_file.unlink(missing_ok=True)
 
 
+class Args:
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline"
+    data_dir = "/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten"
+    output_dir = "/media/veracrypt1/MigrAVEProcessed"
+    modalities = ["video", "audio", "game"]
+    datasets = ["features_video_right.csv"]
+    participant_ids = [24]
+    sessions = [0]
+    classifier_name = "xgboost"
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-ed", "--experiment_dir", type=str,
@@ -299,6 +309,7 @@ if __name__ == '__main__':
     parser.add_argument("-s", "--sessions", required=True, type=int, nargs="+", help="List of sessions")
     parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
     args = parser.parse_args()
+    # args = Args
     for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
