@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='./config/config.yaml', help='Config file')
 
 ALLOWED_MODALITIES = ["video", "audio", "game"]
+ALLOWED_DATASETS = ["features_video_left", "features_video_right", "features_video_color"]
 
 
 def train_generalized_model(df_data: pd.core.frame.DataFrame,
@@ -216,22 +217,8 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     classifiers = config["models"]
     model_types = config["model_types"]
     dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
-    dataset_stems = []
-    features = utils.NON_FEATURES_COLS.copy()
 
-    df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=utils.MIGRAVE_VISUAL_FEATURES)
-    if "video" in modalities:
-        for dataset_file in dataset_files:
-            df_data_visual = pd.read_csv(dataset_file, index_col=0)[utils.MIGRAVE_VISUAL_FEATURES + utils.JOIN_FEATURES_COLS]
-            dataset_stem = os.path.splitext(os.path.basename(dataset_file))[0]
-            dataset_stems.append(dataset_stem)
-            df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in utils.MIGRAVE_VISUAL_FEATURES})
-            df_data = df_data.merge(right=df_data_visual, on=utils.JOIN_FEATURES_COLS)
-            features.extend(["_".join([c, dataset_stem]) for c in utils.MIGRAVE_VISUAL_FEATURES])
-    if "audio" in modalities:
-        features.extend(utils.MIGRAVE_AUDIAL_FEATURES)
-    if "game" in modalities:
-        features.extend(utils.MIGRAVE_GAME_FEATURES)
+    df_data, dataset_stems = utils.merge_datasets(dataset_files, modalities)
 
     dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
     answer = ""
@@ -250,8 +237,6 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
 
     participants = np.sort(df_data.participant.unique())
 
-    df_data_copy = df_data[features].copy()
-
     mean_results = {}
     clf_results = None
     for i, model_type in enumerate(model_types):
@@ -259,7 +244,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         for clf_name in classifiers:
             if "generalized" in model_type:
                 if len(participants) > 1:
-                    clf_results = train_generalized_model(df_data_copy.copy(),
+                    clf_results = train_generalized_model(df_data.copy(),
                                                           clf_name,
                                                           minority_weight_factor=minority_weight_factor,
                                                           participants=participants,
@@ -267,7 +252,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                 else:
                     Logger.warning(f"Number of participant < 2. Skipping training generalized model")
             elif "individualized" in model_type:
-                clf_results = train_individualized_model(df_data_copy.copy(),
+                clf_results = train_individualized_model(df_data.copy(),
                                                          clf_name,
                                                          minority_weight_factor=minority_weight_factor,
                                                          participants=participants,
