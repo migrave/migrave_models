@@ -230,7 +230,7 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             cap = cv2.VideoCapture(str(input_video_file))
             frame_counter = 0
             fps = cap.get(cv2.CAP_PROP_FPS)
-            fourcc = cv2.VideoWriter_fourcc(*"FMP4")
+            fourcc = cv2.VideoWriter_fourcc(*"MP4V")
             width = int(cap.get(3))
             height = int(cap.get(4))
             plot_height = 160
@@ -270,6 +270,9 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
                 else:
                     break
 
+            cap.release()
+            cv2.destroyAllWindows()
+
             output_video_audio_file = "_".join([output_video_name.stem, "audio"]) + output_video_name.suffix
             subprocess.call(
                 ["ffmpeg", "-i", f"{output_video_file.name}", "-i", f"{input_video_file}", "-map", "0:v", "-map",
@@ -278,8 +281,6 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
                  "copy", "-shortest", f"{output_video_audio_file}"], cwd=output_video_dir)
 
             output_video_file.unlink(missing_ok=True)
-            cap.release()
-            cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
