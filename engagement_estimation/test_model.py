@@ -284,12 +284,12 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-ed", "--experiment_dir", required=True, type=str,
+    parser.add_argument("-ed", "--experiment_dir", type=str,
                         default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
                         help="Path to the experiment directory")
-    parser.add_argument("-dd", "--data_dir", required=True, type=str,
+    parser.add_argument("-dd", "--data_dir", type=str,
                         default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
-    parser.add_argument("-od", "--output_dir", required=True, type=str, default="/media/veracrypt1/MigrAVEProcessed",
+    parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
                         help="Path to the output directory")
     parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
     parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
