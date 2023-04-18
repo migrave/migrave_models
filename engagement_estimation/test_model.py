@@ -4,15 +4,14 @@ import joblib
 import os
 import subprocess
 import numpy as np
-import pandas as pd
 from tensorflow import keras
 from hmmlearn.hmm import GaussianHMM
 from sklearn_crfsuite import CRF
-from sklearn import metrics
 import xgboost
 import sys
 import cv2
 from matplotlib import pyplot as plt
+import argparse
 
 from train_and_eval_models import ALLOWED_MODALITIES
 from models import KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
@@ -54,10 +53,6 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
     return classifier, norm_max, norm_min, modalities_id, dataset_id
 
 
-# load_generalized_model(experiment_dir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-#            modalities=["video"], dataset_stems=["features_video_right"], classifier_name="knn", participant_id=1)
-
-
 def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: str, modalities: List[str],
                              datasets: List[str], participant_id: int, session: int, sequence_model: bool):
     """
@@ -97,11 +92,6 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
         features = features.values
         labels = labels.values
     return features, labels, timestamps, date_time, classifier, modalities_id, dataset_id
-
-
-# load_data_and_classifier(experiment_dir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-#                          modalities=["video"], datasets=["features_video_right.csv"], participant_id=1, session=1,
-#                          classifier_name="knn")
 
 
 def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifier_name: str,
@@ -163,11 +153,6 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
     return classification_df, date_time, modalities_id, dataset_id
 
 
-# test_model(experiment_dir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-#            modalities=["video"], datasets=["features_video_right.csv"], participant_id=1, session=1,
-#            classifier_name="xgboost")
-
-
 def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str, date_time: str):
     """
     Gets video from given perspective for participant and session.
@@ -194,10 +179,6 @@ def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str,
                 continue
 
     return video
-
-
-# video = get_video(data_dir="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", participant_id=1, perspective= "right",
-#                   date_time="2022-05-11_16-19-33")
 
 
 def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[str, Path],
@@ -254,7 +235,6 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             height = int(cap.get(4))
             plot_height = 160
             new_height = height + plot_height
-            # plot = np.ones((plot_height, width, 3), dtype=np.uint8) * 255
             out = cv2.VideoWriter(str(output_video_file), fourcc, fps, (width, new_height), 1)
 
             buffer_len = 6
@@ -275,13 +255,11 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
                     ax_0 = fig.add_subplot()
                     ax_0.plot(buffer_df["timestamp"], buffer_df["labels"], color="blue", label="label")
                     ax_0.plot(buffer_df["timestamp"], buffer_df["scores_1"], color="green", label="engaged")
-                    # ax_0.plot(buffer_df["timestamp"], buffer_df["predictions"], color="red", label="engaged")
                     ax_0.axvline(x=0, ymin=0, ymax=1, color="black")
                     ax_0.set_xlim([- buffer_len / 2, buffer_len / 2])
                     ax_0.set_ylim([-0.05, 1.05])
                     ax_0.set_xticks([])
                     ax_0.set_yticks([0, 0.5, 1])
-                    # ax_0.legend(loc="upper right")
                     fig.tight_layout()
                     fig.canvas.draw()
                     fig_arr = np.array(fig.canvas.renderer._renderer)
@@ -304,7 +282,25 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             cv2.destroyAllWindows()
 
 
-generate_prediction_video(
-    experiment_dir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-    data_dir="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", output_dir="/media/veracrypt1/MigrAVEProcessed", modalities=["video", "audio", "game"],
-    datasets=["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"], participant_ids=[1], sessions=[0, 1], classifier_name="xgboost")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ed", "--experiment_dir", required=True, type=str,
+                        default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
+                        help="Path to the experiment directory")
+    parser.add_argument("-dd", "--data_dir", required=True, type=str,
+                        default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
+    parser.add_argument("-od", "--output_dir", required=True, type=str, default="/media/veracrypt1/MigrAVEProcessed",
+                        help="Path to the output directory")
+    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
+    parser.add_argument("-s", "--sessions", required=True, type=int, nargs="+", help="List of sessions")
+    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    args = parser.parse_args()
+    for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
+        if not Path(parsed_dir).is_dir():
+            print(f"Parsed directory {parsed_dir} does not exist.")
+            sys.exit(0)
+    generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
+                              modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
+                              sessions=args.sessions, classifier_name=args.classifier_name)
