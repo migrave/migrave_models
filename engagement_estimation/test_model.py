@@ -224,7 +224,7 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             else:
                 output_video_dir = output_modalities_dir.joinpath(dataset_id)
             output_video_dir.mkdir(parents=True, exist_ok=True)
-            output_video_name = Path(f"classifier_{classifier_name}_tested_on_{participant_id}_session_{session}.mkv")
+            output_video_name = Path(f"classifier_{classifier_name}_tested_on_{participant_id}_session_{session}.mp4")
             output_video_file = output_video_dir.joinpath(output_video_name)
 
             cap = cv2.VideoCapture(str(input_video_file))
