@@ -262,13 +262,13 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
                 mean_results[model_type]["AUPRC_1"][clf_name] = round(clf_result_pd.AUPRC_1.mean() * 100, 2)
                 mean_results[model_type]["AUROC_0"][clf_name] = round(clf_result_pd.AUROC_0.mean() * 100, 2)
                 mean_results[model_type]["AUPRC_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["Accuracy"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["F1_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["Recall_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["Precision_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["F1_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["Recall_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
-                mean_results[model_type]["Precision_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Accuracy"][clf_name] = round(clf_result_pd.Accuracy.mean() * 100, 2)
+                mean_results[model_type]["F1_0"][clf_name] = round(clf_result_pd.F1_0.mean() * 100, 2)
+                mean_results[model_type]["Recall_0"][clf_name] = round(clf_result_pd.Recall_0.mean() * 100, 2)
+                mean_results[model_type]["Precision_0"][clf_name] = round(clf_result_pd.Precision_0.mean() * 100, 2)
+                mean_results[model_type]["F1_1"][clf_name] = round(clf_result_pd.F1_1.mean() * 100, 2)
+                mean_results[model_type]["Recall_1"][clf_name] = round(clf_result_pd.Recall_1.mean() * 100, 2)
+                mean_results[model_type]["Precision_1"][clf_name] = round(clf_result_pd.Precision_1.mean() * 100, 2)
             clf_results = None
         # plot results
         if mean_results[model_type]:
