@@ -236,7 +236,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
     mean_results = {}
     clf_results = None
     for i, model_type in enumerate(model_types):
-        mean_results[model_type] = {"AUROC_1": {}, "AUPRC_1": {}, "AUROC_0": {}, "AUPRC_0": {}}
+        mean_results[model_type] = {"AUROC_1": {}, "AUPRC_1": {}, "AUROC_0": {}, "AUPRC_0": {}, "Accuracy": {}, "F1_0": {}, "Recall_0": {}, "Precision_0": {}, "F1_1": {}, "Recall_1": {}, "Precision_1": {}}
         for clf_name in classifiers:
             if "generalized" in model_type:
                 if len(participants) > 1:
