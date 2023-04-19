@@ -7,6 +7,7 @@ import warnings
 import argparse
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 import models
 import utils
@@ -19,7 +20,7 @@ __author__ = "Mohammad Wasil"
 
 warnings.filterwarnings('ignore')
 parser = argparse.ArgumentParser()
-parser.add_argument('--config', default='./config/config.yaml', help='Config file')
+parser.add_argument('--config', default='./config/', help='Config directory')
 
 ALLOWED_MODALITIES = ["video", "audio", "game"]
 ALLOWED_DATASETS = ["features_video_left", "features_video_right", "features_video_color"]
@@ -266,6 +267,13 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
                 mean_results[model_type]["AUPRC_1"][clf_name] = round(clf_result_pd.AUPRC_1.mean() * 100, 2)
                 mean_results[model_type]["AUROC_0"][clf_name] = round(clf_result_pd.AUROC_0.mean() * 100, 2)
                 mean_results[model_type]["AUPRC_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Accuracy"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["F1_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Recall_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Precision_0"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["F1_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Recall_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
+                mean_results[model_type]["Precision_1"][clf_name] = round(clf_result_pd.AUPRC_0.mean() * 100, 2)
             clf_results = None
         # plot results
         if mean_results[model_type]:
@@ -273,4 +281,8 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
 
 
 if __name__ == '__main__':
-    train_and_evaluate(parser.parse_args().config)
+    config_dir = Path(parser.parse_args().config)
+    for config in config_dir.iterdir():
+        if config.is_file() and config.suffix == ".yaml":
+            print(f"Processing {config.name}")
+            train_and_evaluate(str(config))
