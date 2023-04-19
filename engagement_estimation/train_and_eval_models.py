@@ -188,7 +188,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
     return evaluation_results
 
 
-def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
+def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
     """Trains and evaluates models as specified in the config file under "config_path".
     Saves the results of the training and evaluation in the directory specified by "logdir".
 
@@ -209,7 +209,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
             config = yaml.safe_load(ymlfile)
     except (OSError, ValueError) as exc:
         Logger.error(str(exc))
-        return
+        return f"Skipped config {Path(config).name}"
 
     minority_weight_factor = config["minority_weight_factor"]
     experiment_name = config["experiment_name"]
@@ -222,14 +222,9 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
     df_data, dataset_stems = utils.merge_datasets(dataset_files, modalities)
 
     dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
-    answer = ""
-    print(f"Results will be saved to path {dataset_logdir}")
     if os.path.exists(dataset_logdir):
-        print(f"WARNING: Path {dataset_logdir} already exists. Existing files might be overwritten.")
-    while answer not in ["Y", "n"]:
-        answer = input("Continue? [Y/n]? ")
-    if answer == "n":
-        sys.exit(0)
+        print(f"WARNING: Path {dataset_logdir} already exists. Delete existing path or change config.")
+        return f"Skipped config {Path(config).name}"
 
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
@@ -278,11 +273,21 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> None:
         # plot results
         if mean_results[model_type]:
             utils.plot_results(mean_results[model_type], cmap_idx=i, name=model_type, imdir=os.path.join(dataset_logdir, "images"), show=False)
+    return f"Completed config {Path(config).name}"
 
 
 if __name__ == '__main__':
     config_dir = Path(parser.parse_args().config)
+    report_msg = []
     for config in config_dir.iterdir():
         if config.is_file() and config.suffix == ".yaml":
             print(f"Processing {config.name}")
-            train_and_evaluate(str(config))
+            msg = train_and_evaluate(str(config))
+            report_msg.append(msg)
+    skipped_msg = [msg for msg in report_msg if msg.startswith("Skipped")]
+    n_skipped = len(skipped_msg)
+    n_completed = len(report_msg) - n_skipped
+    skipped_msg = "\n".join(skipped_msg)
+    print(skipped_msg)
+    print(f"Skipped {n_skipped} experiments and completed {n_completed}")
+
