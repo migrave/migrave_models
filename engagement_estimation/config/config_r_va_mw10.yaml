@@ -1,0 +1,21 @@
+model_types:
+    - individualized
+    - generalized
+models:
+    - random_forest
+    - xgboost
+    - svm
+    - knn
+    - naive_bayes
+    - logistic_regression
+    - neural_network
+    - recurrent_neural_network
+    - hmm
+    - crf
+modalities:
+    - video
+    - audio
+datasets:
+    - features_video_right.csv
+minority_weight_factor: 10
+experiment_name: baseline_19_04_2023_fix_annotation_gaps_mw10
