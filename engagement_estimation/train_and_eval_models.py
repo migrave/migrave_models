@@ -209,7 +209,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
             config = yaml.safe_load(ymlfile)
     except (OSError, ValueError) as exc:
         Logger.error(str(exc))
-        return f"Skipped config {Path(config).name}"
+        return f"Skipped config {Path(config_path).name}"
 
     minority_weight_factor = config["minority_weight_factor"]
     experiment_name = config["experiment_name"]
@@ -224,7 +224,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
     dataset_logdir = os.path.join(logdir, experiment_name, "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]), "_".join(dataset_stems))
     if os.path.exists(dataset_logdir):
         print(f"WARNING: Path {dataset_logdir} already exists. Delete existing path or change config.")
-        return f"Skipped config {Path(config).name}"
+        return f"Skipped config {Path(config_path).name}"
 
     if not os.path.exists(dataset_logdir):
         os.makedirs(dataset_logdir)
@@ -273,7 +273,7 @@ def train_and_evaluate(config_path: str, logdir: str="./logs") -> str:
         # plot results
         if mean_results[model_type]:
             utils.plot_results(mean_results[model_type], cmap_idx=i, name=model_type, imdir=os.path.join(dataset_logdir, "images"), show=False)
-    return f"Completed config {Path(config).name}"
+    return f"Completed config {Path(config_path).name}"
 
 
 if __name__ == '__main__':
