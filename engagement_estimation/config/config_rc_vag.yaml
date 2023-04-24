@@ -20,4 +20,5 @@ datasets:
     - features_video_right.csv
     - features_video_color.csv
 minority_weight_factor: 1
+label_issue_file:
 experiment_name: baseline_19_04_2023_fix_annotation_gaps

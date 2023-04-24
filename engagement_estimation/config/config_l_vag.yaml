@@ -19,4 +19,5 @@ modalities:
 datasets:
     - features_video_left.csv
 minority_weight_factor: 1
+label_issue_file:
 experiment_name: baseline_19_04_2023_fix_annotation_gaps

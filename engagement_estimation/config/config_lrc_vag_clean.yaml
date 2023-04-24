@@ -17,7 +17,9 @@ modalities:
     - audio
     - game
 datasets:
+    - features_video_left.csv
+    - features_video_right.csv
     - features_video_color.csv
 minority_weight_factor: 1
-label_issue_file:
-experiment_name: baseline_19_04_2023_fix_annotation_gaps
+label_issue_file: xgboost_cross_validation_issues.csv
+experiment_name: clean_lab_exclude_issues

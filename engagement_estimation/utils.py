@@ -5,13 +5,13 @@ from pathlib import Path
 import joblib
 import matplotlib.pyplot as plt
 import matplotlib
+
 matplotlib.use('Agg')
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from tensorflow import keras
-
 
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
@@ -38,7 +38,8 @@ MIGRAVE_AUDIAL_FEATURES = ["a_harmonicity", "a_intensity", "a_mfcc_0", "a_mfcc_1
 MIGRAVE_GAME_FEATURES = ["ros_aptitude", "ros_diff_1", "ros_diff_2", "ros_games_session", "ros_in_game",
                          "ros_mistakes_game", "ros_mistakes_session", "ros_skill_EM", "ros_skill_IM", "ros_ts_attempt",
                          "ros_ts_game_start", "ros_ts_robot_talked", "ros_aptitude_var"]
-NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement", "index_original", "frame_number", "date_time"]
+NON_FEATURES_COLS = ["participant", "session_num", "timestamp", "engagement", "index_original", "frame_number",
+                     "date_time"]
 
 JOIN_FEATURES_COLS = ["participant", "session_num", "index_original", "frame_number"]
 
@@ -205,7 +206,7 @@ def normalize_data(data: pd.core.frame.DataFrame,
     return data_copy, data_max, data_min
 
 
-def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False):
+def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None):
     """
     Train on other users
     Input:
@@ -219,6 +220,9 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
 
     train_data = data.loc[data["participant"] != idx]
     test_data = data.loc[data["participant"] == idx]
+
+    if label_issue_file is not None:
+        train_data = remove_label_issues(label_issue_file=label_issue_file, dataset_df=train_data.copy())
 
     train_labels = train_data[['engagement']]
     test_labels = test_data[['engagement']]
@@ -237,10 +241,14 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(train_data.index.values)]
-        test_data = [test_data.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_data.index.values)]
-        train_labels = [train_labels.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(train_labels.index.values)]
-        test_labels = [test_labels.loc[session_sequence].values for session_sequence in session_sequences if session_sequence[0] in list(test_labels.index.values)]
+        train_data = [train_data.loc[session_sequence].values for session_sequence in session_sequences if
+                      session_sequence[0] in list(train_data.index.values)]
+        test_data = [test_data.loc[session_sequence].values for session_sequence in session_sequences if
+                     session_sequence[0] in list(test_data.index.values)]
+        train_labels = [train_labels.loc[session_sequence].values for session_sequence in session_sequences if
+                        session_sequence[0] in list(train_labels.index.values)]
+        test_labels = [test_labels.loc[session_sequence].values for session_sequence in session_sequences if
+                       session_sequence[0] in list(test_labels.index.values)]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -252,16 +260,13 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
-def split_individualized_data(dataframe,
-                              idx,
-                              train_percentage,
-                              non_feature_cols=None,
-                              sequence_model=False):
+def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols=None, sequence_model=False,
+                              label_issue_file=None):
     """
     Train on a subset of user data
     Input:
         dataframe: dataset
-        idx: Index of participat to be trained on
+        idx: Index of participant to be trained on
         train_percentage: a list of train percentage
     Return:
         train_data, train_labels, test_data, test_labels, train_max, train_min
@@ -274,7 +279,12 @@ def split_individualized_data(dataframe,
 
     test_split_size = 1.0 - train_percentage
 
-    train_data, test_data, train_labels, test_labels = train_test_split(data, labels, test_size=test_split_size, shuffle=False)
+    train_data, test_data, train_labels, test_labels = train_test_split(data, labels, test_size=test_split_size,
+                                                                        shuffle=False)
+
+    if label_issue_file is not None:
+        train_data = remove_label_issues(label_issue_file=label_issue_file, dataset_df=train_data.copy())
+        train_labels = train_data[["engagement"]]
 
     if non_feature_cols:
         train_data = train_data.drop(columns=non_feature_cols)
@@ -289,14 +299,20 @@ def split_individualized_data(dataframe,
     if sequence_model:
         session_groups = data.groupby(["participant", 'session_num'])
         session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]].values for session_sequence in session_sequences if
+        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]].values
+                      for session_sequence in session_sequences if
                       [idx for idx in session_sequence if idx in list(train_data.index.values)]]
-        test_data = [test_data.loc[[idx for idx in session_sequence if idx in list(test_data.index.values)]].values for session_sequence in session_sequences if
+        test_data = [test_data.loc[[idx for idx in session_sequence if idx in list(test_data.index.values)]].values for
+                     session_sequence in session_sequences if
                      [idx for idx in session_sequence if idx in list(test_data.index.values)]]
-        train_labels = [train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]].values for session_sequence in session_sequences if
-                        [idx for idx in session_sequence if idx in list(train_labels.index.values)]]
-        test_labels = [test_labels.loc[[idx for idx in session_sequence if idx in list(test_labels.index.values)]].values for session_sequence in session_sequences if
-                       [idx for idx in session_sequence if idx in list(test_labels.index.values)]]
+        train_labels = [
+            train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]].values for
+            session_sequence in session_sequences if
+            [idx for idx in session_sequence if idx in list(train_labels.index.values)]]
+        test_labels = [
+            test_labels.loc[[idx for idx in session_sequence if idx in list(test_labels.index.values)]].values for
+            session_sequence in session_sequences if
+            [idx for idx in session_sequence if idx in list(test_labels.index.values)]]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -317,7 +333,9 @@ def merge_datasets(dataset_files, modalities):
             df_data_visual = pd.read_csv(dataset_file, index_col=0)[MIGRAVE_VISUAL_FEATURES + JOIN_FEATURES_COLS]
             dataset_stem = os.path.splitext(os.path.basename(dataset_file))[0]
             dataset_stems.append(dataset_stem)
-            df_data_visual = df_data_visual.rename(columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if c in MIGRAVE_VISUAL_FEATURES})
+            df_data_visual = df_data_visual.rename(
+                columns={c: "_".join([c, dataset_stem]) for c in df_data_visual.columns if
+                         c in MIGRAVE_VISUAL_FEATURES})
             df_data = df_data.merge(right=df_data_visual, on=JOIN_FEATURES_COLS)
             features.extend(["_".join([c, dataset_stem]) for c in MIGRAVE_VISUAL_FEATURES])
     if "audio" in modalities:
@@ -328,6 +346,19 @@ def merge_datasets(dataset_files, modalities):
     df_data_copy = df_data[features].copy()
 
     return df_data_copy, dataset_stems
+
+
+def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
+    # remove label issues from datasets
+    label_issue_file = os.path.join("dataset", label_issue_file)
+    label_issue_df = pd.read_csv(label_issue_file, index_col=0)
+    label_issue_df = label_issue_df.loc[label_issue_df["label_issues"] == True]
+    data_cols = dataset_df.columns
+    dataset_df = pd.merge(left=dataset_df, right=label_issue_df, on=["participant", "session_num", "timestamp"],
+                          how="left", indicator=True)
+    dataset_df = dataset_df[dataset_df["_merge"] == "left_only"][data_cols]
+
+    return dataset_df
 
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
@@ -352,19 +383,19 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
         num_of_plots = len(means)
         migrave_idx = cmap_idx % len(MIGRAVE_PALETTE)
         color_gradient = get_color_gradient([255, 255, 255], MIGRAVE_PALETTE[migrave_idx], resolution=101)
-        legend_names = ["_Hidden"]*num_of_plots*2
-        for i,clf in enumerate(means.keys()):
-            ax.pie([100-means[clf], means[clf]], radius=3-i*size,
-                    colors=[cmap(128), color_gradient[int(means[clf])]], startangle=90,
-                    wedgeprops=dict(width=size, edgecolor='w'))
-            legend_names[i+i+1] = clf + f" ({means[clf]}%)"
+        legend_names = ["_Hidden"] * num_of_plots * 2
+        for i, clf in enumerate(means.keys()):
+            ax.pie([100 - means[clf], means[clf]], radius=3 - i * size,
+                   colors=[cmap(128), color_gradient[int(means[clf])]], startangle=90,
+                   wedgeprops=dict(width=size, edgecolor='w'))
+            legend_names[i + i + 1] = clf + f" ({means[clf]}%)"
 
         ax.set(aspect="equal")
         plt.rcParams['font.size'] = 14
         plt.title(f"{metric} on {name} models", y=1.35)
         plt.legend(legend_names, loc=(1.5, 0.5), title="Models")
-        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".png"), bbox_inches='tight')
-        plt.savefig(os.path.join(imdir, "_".join([name, metric]) +".svg"), bbox_inches='tight')
+        plt.savefig(os.path.join(imdir, "_".join([name, metric]) + ".png"), bbox_inches='tight')
+        plt.savefig(os.path.join(imdir, "_".join([name, metric]) + ".svg"), bbox_inches='tight')
         if show:
             plt.show()
 
@@ -398,7 +429,9 @@ def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0", "Precis
     results = get_results(logdir, model_type, metrics)
     plot_results(results=results, cmap_idx=0, name=model_type, imdir=os.path.join(logdir, "images"))
 
-def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
+
+def plot_summary(logdirs: List[str], out_dir, model_type="generalized",
+                 metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
     logdirs = [Path(logdir) for logdir in logdirs]
     summary_results = {metric: {} for metric in metrics}
     for modality_dir in logdirs:
@@ -417,5 +450,6 @@ def plot_summary(logdirs: List[str], out_dir, model_type="generalized", metrics=
             modality_result = get_results(modality_dir, model_type, metrics)
         for metric in summary_results.keys():
             model_max_result = max(modality_result[metric], key=modality_result[metric].get)
-            summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][model_max_result]
+            summary_results[metric]["-".join([modality_key, model_max_result])] = modality_result[metric][
+                model_max_result]
     plot_results(results=summary_results, cmap_idx=0, name=model_type, imdir=os.path.join(out_dir, "images_summary"))
