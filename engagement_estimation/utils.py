@@ -216,7 +216,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.copy()
-    data = data.sort_values(['session_num', 'timestamp'], ascending=[True, True])
+    data = data.sort_values(["participant", "session_num", "timestamp"], ascending=[True, True, True])
 
     train_data = data.loc[data["participant"] != idx]
     test_data = data.loc[data["participant"] == idx]
@@ -224,8 +224,8 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     if label_issue_file is not None:
         train_data = remove_label_issues(label_issue_file=label_issue_file, dataset_df=train_data.copy())
 
-    train_labels = train_data[['engagement']]
-    test_labels = test_data[['engagement']]
+    train_labels = train_data[["engagement"]]
+    test_labels = test_data[["engagement"]]
 
     if non_feature_cols:
         train_data = train_data.drop(columns=non_feature_cols)
@@ -238,17 +238,14 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
     if sequence_model:
-        data = data.sort_values(["participant", 'session_num', 'timestamp'], ascending=[True, True, True])
-        session_groups = data.groupby(["participant", 'session_num'])
-        session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[session_sequence].values for session_sequence in session_sequences if
-                      session_sequence[0] in list(train_data.index.values)]
-        test_data = [test_data.loc[session_sequence].values for session_sequence in session_sequences if
-                     session_sequence[0] in list(test_data.index.values)]
-        train_labels = [train_labels.loc[session_sequence].values for session_sequence in session_sequences if
-                        session_sequence[0] in list(train_labels.index.values)]
-        test_labels = [test_labels.loc[session_sequence].values for session_sequence in session_sequences if
-                       session_sequence[0] in list(test_labels.index.values)]
+        train_data = train_data.join([train_labels, data[["participant", "session_num"]]])
+        test_data = test_data.join([test_labels, data[["participant", "session_num"]]])
+        train_groups = train_data.groupby(["participant", "session_num"])
+        test_groups = test_data.groupby(["participant", "session_num"])
+        train_labels = [group[["engagement"]].values for name, group in train_groups]
+        test_labels = [group[["engagement"]].values for name, group in test_groups]
+        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
+        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -272,10 +269,8 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.loc[dataframe["participant"] == idx].copy()
-
-    # before split, sort value based on session_num and timestamp
-    data = data.sort_values(['session_num', 'timestamp'], ascending=[True, True])
-    labels = data[['engagement']]
+    data = data.sort_values(["session_num", "timestamp"], ascending=[True, True])
+    labels = data[["engagement"]]
 
     test_split_size = 1.0 - train_percentage
 
@@ -297,22 +292,14 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
     test_data, _, _ = normalize_data(test_data, max=train_max, min=train_min)
 
     if sequence_model:
-        session_groups = data.groupby(["participant", 'session_num'])
-        session_sequences = [list(group.index.values) for name, group in session_groups]
-        train_data = [train_data.loc[[idx for idx in session_sequence if idx in list(train_data.index.values)]].values
-                      for session_sequence in session_sequences if
-                      [idx for idx in session_sequence if idx in list(train_data.index.values)]]
-        test_data = [test_data.loc[[idx for idx in session_sequence if idx in list(test_data.index.values)]].values for
-                     session_sequence in session_sequences if
-                     [idx for idx in session_sequence if idx in list(test_data.index.values)]]
-        train_labels = [
-            train_labels.loc[[idx for idx in session_sequence if idx in list(train_labels.index.values)]].values for
-            session_sequence in session_sequences if
-            [idx for idx in session_sequence if idx in list(train_labels.index.values)]]
-        test_labels = [
-            test_labels.loc[[idx for idx in session_sequence if idx in list(test_labels.index.values)]].values for
-            session_sequence in session_sequences if
-            [idx for idx in session_sequence if idx in list(test_labels.index.values)]]
+        train_data = train_data.join([train_labels, data[["participant", "session_num"]]])
+        test_data = test_data.join([test_labels, data[["participant", "session_num"]]])
+        train_groups = train_data.groupby(["participant", "session_num"])
+        test_groups = test_data.groupby(["participant", "session_num"])
+        train_labels = [group[["engagement"]].values for name, group in train_groups]
+        test_labels = [group[["engagement"]].values for name, group in test_groups]
+        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
+        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -354,8 +341,9 @@ def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
     label_issue_df = pd.read_csv(label_issue_file, index_col=0)
     label_issue_df = label_issue_df.loc[label_issue_df["label_issues"] == True]
     data_cols = dataset_df.columns
-    dataset_df = pd.merge(left=dataset_df, right=label_issue_df, on=["participant", "session_num", "timestamp"],
-                          how="left", indicator=True)
+    dataset_df = dataset_df.reset_index(names="__tmp_index__").merge(right=label_issue_df,
+                                                        on=["participant", "session_num", "timestamp"],
+                                                        how="left", indicator=True).set_index("__tmp_index__")
     dataset_df = dataset_df[dataset_df["_merge"] == "left_only"][data_cols]
 
     return dataset_df

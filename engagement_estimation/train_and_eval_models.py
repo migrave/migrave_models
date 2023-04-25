@@ -52,10 +52,6 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
     sequence_model = classifier_name in models.SEQUENTIAL_CLASSIFIERS
     evaluation_results = []
     for p in participants:
-        # shuffle all data and reindex
-        df_data = df_data.reindex(np.random.permutation(df_data.index))
-        df_data = df_data.reset_index(drop=True)
-
         train_data, train_labels, test_data, test_labels, max_norm, min_norm = utils.split_generalized_data(df_data, idx=p,
                                                                                                   sequence_model=sequence_model,
                                                                                                   label_issue_file=label_issue_file)
@@ -138,14 +134,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
     sequence_model = classifier_name in models.SEQUENTIAL_CLASSIFIERS
     evaluation_results = []
     for p in participants:
-        # shuffle all data and reindex
-        df_data = df_data.reindex(np.random.permutation(df_data.index))
-        df_data = df_data.reset_index(drop=True)
         for tr_percentage in train_percentage:
-            # shuffle all data and reindex
-            df_data = df_data.reindex(np.random.permutation(df_data.index))
-            df_data = df_data.reset_index(drop=True)
-
             train_data, train_labels, test_data, test_labels, max_norm, min_norm = utils.split_individualized_data(df_data,
                                                                                                          idx=p,
                                                                                                          train_percentage=tr_percentage,

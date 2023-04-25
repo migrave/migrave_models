@@ -145,8 +145,8 @@ def sklearn(train_data,
             validation_labels = keras.preprocessing.sequence.pad_sequences(validation_labels, padding="post", dtype="float32", value=0.0)
             test_data = keras.preprocessing.sequence.pad_sequences(test_data, padding="post", dtype="float32", value=0.0)
             sample_weight = keras.preprocessing.sequence.pad_sequences(sample_weight, padding="post", dtype="float32", value=0.0)
-            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], sample_weight=sample_weight)
-            scores_1 = classifier.predict(test_data)
+            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], sample_weight=sample_weight, verbose=0)
+            scores_1 = classifier.predict(test_data, verbose=0)
             scores_1 = [score[0] for score_batch, test_labels_batch in zip(scores_1, test_labels) for score in score_batch[:len(test_labels_batch)]]
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
@@ -156,8 +156,8 @@ def sklearn(train_data,
                 return classifier, msg
             class_weight = {1: train_counts[np.argmin(train_unique)] / np.sum(train_counts) / minority_weight_factor}
             class_weight[0] = 1 - class_weight[1]
-            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
-            scores_1 = classifier.predict(test_data)
+            classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight, verbose=0)
+            scores_1 = classifier.predict(test_data, verbose=0)
             scores_1 = [score[0] for score in scores_1]
         scores_0 = [1 - score_1 for score_1 in scores_1]
         test_labels = np.concatenate(test_labels).flatten()
