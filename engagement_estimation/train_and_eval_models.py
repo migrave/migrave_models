@@ -56,7 +56,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
         df_data = df_data.reindex(np.random.permutation(df_data.index))
         df_data = df_data.reset_index(drop=True)
 
-        train_data, train_labels, test_data, test_labels, max, min = utils.split_generalized_data(df_data, idx=p,
+        train_data, train_labels, test_data, test_labels, max_norm, min_norm = utils.split_generalized_data(df_data, idx=p,
                                                                                                   sequence_model=sequence_model,
                                                                                                   label_issue_file=label_issue_file)
 
@@ -104,7 +104,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
         if not os.path.exists(logdir):
             os.makedirs(logdir)
 
-        utils.save_classifier(classifier, max, min,
+        utils.save_classifier(classifier, max_norm, min_norm,
                               "{}/generalized_{}_model_tested_on_{}".format(logdir, classifier_name, p))
 
     return evaluation_results
@@ -146,7 +146,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             df_data = df_data.reindex(np.random.permutation(df_data.index))
             df_data = df_data.reset_index(drop=True)
 
-            train_data, train_labels, test_data, test_labels, max, min = utils.split_individualized_data(df_data,
+            train_data, train_labels, test_data, test_labels, max_norm, min_norm = utils.split_individualized_data(df_data,
                                                                                                          idx=p,
                                                                                                          train_percentage=tr_percentage,
                                                                                                          sequence_model=sequence_model,
@@ -198,7 +198,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
             if not os.path.exists(logdir):
                 os.makedirs(logdir)
 
-            utils.save_classifier(classifier, max, min,
+            utils.save_classifier(classifier, max_norm, min_norm,
                                   "{}/individualized_{}_trained_on_{}_train_percentage_{}".format(logdir,
                                                                                                   classifier_name,
                                                                                                   p,

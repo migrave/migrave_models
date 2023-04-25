@@ -205,6 +205,11 @@ def sklearn(train_data,
         scores_0 = scores[:, 0]
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     else:
+        if isinstance(classifier, calibration.CalibratedClassifierCV):
+            train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            if min(train_counts) < 5:
+                msg = f"Only one class in train data after validation split."
+                return classifier, msg
         classifier.fit(train_data, train_labels)
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
