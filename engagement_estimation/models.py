@@ -133,6 +133,9 @@ def sklearn(train_data,
                 validation_labels.append(train_labels[i][idx:, :])
                 train_labels[i] = train_labels[i][:idx, :]
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            if len(train_unique) == 1:
+                msg = f"Only one class in train data after validation split."
+                return classifier, msg
             class_weight = {1: train_counts[np.argmin(train_unique)] / np.sum(train_counts) / minority_weight_factor}
             class_weight[0] = 1 - class_weight[1]
             sample_weight = [[class_weight[label[0]] for label in sequence] for sequence in train_labels]
@@ -148,6 +151,9 @@ def sklearn(train_data,
         else:
             train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+            if len(train_unique) == 1:
+                msg = f"Only one class in train data after validation split."
+                return classifier, msg
             class_weight = {1: train_counts[np.argmin(train_unique)] / np.sum(train_counts) / minority_weight_factor}
             class_weight[0] = 1 - class_weight[1]
             classifier.fit(train_data, train_labels, epochs=200, batch_size=min(200, len(train_data)), validation_data=(validation_data, validation_labels), callbacks=[callback], class_weight=class_weight)
@@ -188,8 +194,12 @@ def sklearn(train_data,
         test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     elif isinstance(classifier, xgboost.XGBClassifier):
-        train_data, valid_data, train_labels, valid_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
-        classifier.fit(train_data, train_labels, eval_set=[(valid_data, valid_labels)])
+        train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels, test_size=0.1, shuffle=False)
+        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+        if len(train_unique) == 1:
+            msg = f"Only one class in train data after validation split."
+            return classifier, msg
+        classifier.fit(train_data, train_labels, eval_set=[(validation_data, validation_labels)])
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
         scores_0 = scores[:, 0]

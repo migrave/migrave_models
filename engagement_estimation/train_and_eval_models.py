@@ -86,6 +86,10 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
         if result is None:
             print(f"Faulty prediction. Excluded VP{p} for generalized model.")
             continue
+        elif isinstance(result, str):
+            print(f"{result} Excluded VP{p} for generalized model.")
+            continue
+
         result['Train'] = ", ".join(str(x) for x in participants if x != p)
         result['Test'] = p
         result["Train_0"] = train_counts[np.argmin(train_unique)]
@@ -175,6 +179,10 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                 print(
                     f"Faulty prediction. Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
                 continue
+            elif isinstance(result, str):
+                print(f"{result} Excluded VP{p} with train percentage {tr_percentage} for individualized model.")
+                continue
+
             result['Participant'] = p
             result['Train'] = "{} ({})".format(p, int(tr_percentage * 100))
             result['Test'] = "{} ({})".format(p, int((1 - tr_percentage) * 100))
