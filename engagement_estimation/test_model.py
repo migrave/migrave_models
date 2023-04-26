@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Optional
 import joblib
 import os
 import subprocess
 import numpy as np
+import pandas as pd
 from tensorflow import keras
 from hmmlearn.hmm import GaussianHMM
 from sklearn_crfsuite import CRF
@@ -15,7 +16,20 @@ import argparse
 
 from train_and_eval_models import ALLOWED_MODALITIES
 from models import KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
-from utils import merge_datasets, normalize_data, NON_FEATURES_COLS
+from utils import merge_datasets, normalize_data, NON_FEATURES_COLS, ALLOWED_DATASETS
+
+
+def get_sessions(dataset: str, participant_id: int):
+    """
+    Finds all session ids for participant in dataset.
+    :param dataset:
+    :param participant_id:
+    :return:
+    """
+    dataset_file = os.path.join("dataset", dataset)
+    df_data = pd.read_csv(dataset_file, index_col=0)
+    df_data = df_data.loc[df_data["participant"] == participant_id]
+    return df_data["session_num"].unique()
 
 
 def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: List[str], dataset_stems: List[str],
@@ -53,10 +67,35 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
     return classifier, norm_max, norm_min, modalities_id, dataset_id
 
 
+def get_xgboost_cv_feature_importance(experiment_dir: Union[str, Path], modalities: List[str], datasets: List[str],
+                                      participant_ids: List[int]):
+    """
+    Calculates mean of cross validated feature importances of xgboost models.
+    :param experiment_dir:
+    :param modalities:
+    :param datasets:
+    :param participant_ids:
+    :return:
+    """
+    dataset_stems = [os.path.splitext(os.path.basename(dataset))[0] for dataset in datasets]
+    dataset_stems = [dataset_stem for dataset_stem in ALLOWED_DATASETS if dataset_stem in dataset_stems]
+    feature_importance_dfs = []
+    for participant_id in participant_ids:
+        classifier, norm_max, norm_min, modalities_id, dataset_id = load_generalized_classifier(
+            experiment_dir=experiment_dir, modalities=modalities, dataset_stems=dataset_stems,
+            classifier_name="xgboost", participant_id=participant_id)
+        feature_importance_df = pd.DataFrame({"features": norm_max.keys(), f"importance_{participant_id}": classifier.feature_importances_})
+        feature_importance_dfs.append(feature_importance_df.set_index("features"))
+    feature_importance_dfs = pd.concat(feature_importance_dfs, axis=1)
+    feature_importance_dfs["mean_importance"] = feature_importance_dfs.mean(axis=1)
+
+    return feature_importance_dfs
+
+
 def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: str, modalities: List[str],
                              datasets: List[str], participant_id: int, session: int, sequence_model: bool):
     """
-    Loads the features and classifier with respect to the used modalites and perspectives and filters for the
+    Loads the features and classifier with respect to the used modalities and perspectives and filters for the
     participant.
     :param experiment_dir:
     :param classifier_name:
@@ -164,7 +203,8 @@ def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str,
     """
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
-    participant_id_dirs = [participant_id_dir for participant_id_dir in data_dir.iterdir() if participant_id_dir.is_dir() and participant_id_dir.name.startswith(f"VP{participant_id:02}")]
+    participant_id_dirs = [participant_id_dir for participant_id_dir in data_dir.iterdir() if
+                           participant_id_dir.is_dir() and participant_id_dir.name.startswith(f"VP{participant_id:02}")]
     session_dir = None
     for participant_id_dir in participant_id_dirs:
         if participant_id_dir.joinpath(date_time).is_dir():
@@ -182,7 +222,7 @@ def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str,
 
 def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[str, Path],
                               output_dir: Union[str, Path], modalities: List[str], classifier_name: str,
-                              participant_ids: List[int], datasets: List[str], sessions: List[int]):
+                              participant_ids: List[int], datasets: List[str], sessions: Optional[List[int]] = None):
     """
     Generates video with probabilities for classes as running plot.
     :param experiment_dir:
@@ -201,6 +241,8 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
         experiment_dir = Path(experiment_dir)
 
     for participant_id in participant_ids:
+        if sessions is None:
+            sessions = get_sessions(dataset=datasets[0], participant_id=participant_id)
         for session in sessions:
             classification_df, date_time, modalities_id, dataset_id = test_model(experiment_dir=experiment_dir,
                                                                                  modalities=modalities,
@@ -284,32 +326,32 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
 
 
 class Args:
-    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline"
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues"
     data_dir = "/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten"
     output_dir = "/media/veracrypt1/MigrAVEProcessed"
     modalities = ["video", "audio", "game"]
-    datasets = ["features_video_right.csv"]
-    participant_ids = [24]
-    sessions = [0]
+    datasets = ["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"]
+    participant_ids = [1, 11, 19]
+    sessions = None
     classifier_name = "xgboost"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-ed", "--experiment_dir", type=str,
-                        default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-                        help="Path to the experiment directory")
-    parser.add_argument("-dd", "--data_dir", type=str,
-                        default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
-    parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
-                        help="Path to the output directory")
-    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
-    parser.add_argument("-s", "--sessions", required=True, type=int, nargs="+", help="List of sessions")
-    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    args = parser.parse_args()
-    # args = Args
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-ed", "--experiment_dir", type=str,
+    #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
+    #                     help="Path to the experiment directory")
+    # parser.add_argument("-dd", "--data_dir", type=str,
+    #                     default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
+    # parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
+    #                     help="Path to the output directory")
+    # parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    # parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    # parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
+    # parser.add_argument("-s", "--sessions", type=int, nargs="+", help="List of sessions")
+    # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    # args = parser.parse_args()
+    args = Args
     for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
@@ -317,3 +359,5 @@ if __name__ == '__main__':
     generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
                               modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
                               sessions=args.sessions, classifier_name=args.classifier_name)
+
+    #get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)

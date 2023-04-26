@@ -1,17 +1,10 @@
 from cleanlab.filter import find_label_issues, get_label_quality_scores
 from cleanlab.dataset import health_summary
-from test_model import test_model
+from test_model import test_model, get_sessions
 import numpy as np
 import pandas as pd
 import os
 from pathlib import Path
-
-
-def get_sessions(dataset: str, participant_id: int):
-    dataset_file = os.path.join("dataset", dataset)
-    df_data = pd.read_csv(dataset_file, index_col=0)
-    df_data = df_data.loc[df_data["participant"] == participant_id]
-    return df_data["session_num"].unique()
 
 
 if __name__ == '__main__':
