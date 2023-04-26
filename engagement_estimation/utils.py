@@ -206,7 +206,8 @@ def normalize_data(data: pd.core.frame.DataFrame,
     return data_copy, data_max, data_min
 
 
-def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None):
+def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None,
+                           exclude_feature_regex=None):
     """
     Train on other users
     Input:
@@ -216,6 +217,8 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.copy()
+    if exclude_feature_regex is not None:
+        data = data.drop(data.filter(regex=exclude_feature_regex).columns, axis=1)
     data = data.sort_values(["participant", "session_num", "timestamp"], ascending=[True, True, True])
 
     train_data = data.loc[data["participant"] != idx]
@@ -244,8 +247,10 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         test_groups = test_data.groupby(["participant", "session_num"])
         train_labels = [group[["engagement"]].astype("int64").values for name, group in train_groups]
         test_labels = [group[["engagement"]].astype("int64").values for name, group in test_groups]
-        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
-        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
+        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in
+                      train_groups]
+        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in
+                     test_groups]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -258,7 +263,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
 
 
 def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols=None, sequence_model=False,
-                              label_issue_file=None):
+                              label_issue_file=None, exclude_feature_regex=None):
     """
     Train on a subset of user data
     Input:
@@ -269,6 +274,8 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.loc[dataframe["participant"] == idx].copy()
+    if exclude_feature_regex is not None:
+        data = data.drop(data.filter(regex=exclude_feature_regex).columns, axis=1)
     data = data.sort_values(["session_num", "timestamp"], ascending=[True, True])
     labels = data[["engagement"]]
 
@@ -298,8 +305,10 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
         test_groups = test_data.groupby(["participant", "session_num"])
         train_labels = [group[["engagement"]].astype("int64").values for name, group in train_groups]
         test_labels = [group[["engagement"]].astype("int64").values for name, group in test_groups]
-        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
-        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
+        train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in
+                      train_groups]
+        test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in
+                     test_groups]
     else:
         train_data = train_data.values
         test_data = test_data.values
@@ -342,8 +351,9 @@ def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
     label_issue_df = label_issue_df.loc[label_issue_df["label_issues"] == True]
     data_cols = dataset_df.columns
     dataset_df = dataset_df.reset_index(names="__tmp_index__").merge(right=label_issue_df,
-                                                        on=["participant", "session_num", "timestamp"],
-                                                        how="left", indicator=True).set_index("__tmp_index__")
+                                                                     on=["participant", "session_num", "timestamp"],
+                                                                     how="left", indicator=True).set_index(
+        "__tmp_index__")
     dataset_df = dataset_df[dataset_df["_merge"] == "left_only"][data_cols]
 
     return dataset_df

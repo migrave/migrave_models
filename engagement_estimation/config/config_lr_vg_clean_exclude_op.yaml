@@ -1,5 +1,4 @@
 model_types:
-    - individualized
     - generalized
 models:
     - random_forest
@@ -14,13 +13,11 @@ models:
     - crf
 modalities:
     - video
-    - audio
     - game
 datasets:
     - features_video_left.csv
     - features_video_right.csv
-    - features_video_color.csv
 minority_weight_factor: 1
 label_issue_file: xgboost_cross_validation_issues.csv
-exclude_feature_regex:
-experiment_name: clean_lab_exclude_issues
+exclude_feature_regex: ^op.*
+experiment_name: clean_lab_exclude_issues_exclude_op

@@ -337,21 +337,21 @@ class Args:
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-ed", "--experiment_dir", type=str,
-    #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/05_04_2023_baseline",
-    #                     help="Path to the experiment directory")
-    # parser.add_argument("-dd", "--data_dir", type=str,
-    #                     default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
-    # parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
-    #                     help="Path to the output directory")
-    # parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    # parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    # parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
-    # parser.add_argument("-s", "--sessions", type=int, nargs="+", help="List of sessions")
-    # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    # args = parser.parse_args()
-    args = Args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ed", "--experiment_dir", type=str,
+                        default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues",
+                        help="Path to the experiment directory")
+    parser.add_argument("-dd", "--data_dir", type=str,
+                        default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
+    parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
+                        help="Path to the output directory")
+    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
+    parser.add_argument("-s", "--sessions", type=int, nargs="+", help="List of sessions")
+    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    args = parser.parse_args()
+    # args = Args
     for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
