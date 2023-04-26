@@ -242,8 +242,8 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         test_data = test_data.join([test_labels, data[["participant", "session_num"]]])
         train_groups = train_data.groupby(["participant", "session_num"])
         test_groups = test_data.groupby(["participant", "session_num"])
-        train_labels = [group[["engagement"]].values for name, group in train_groups]
-        test_labels = [group[["engagement"]].values for name, group in test_groups]
+        train_labels = [group[["engagement"]].astype("int64").values for name, group in train_groups]
+        test_labels = [group[["engagement"]].astype("int64").values for name, group in test_groups]
         train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
         test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
     else:
@@ -296,8 +296,8 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
         test_data = test_data.join([test_labels, data[["participant", "session_num"]]])
         train_groups = train_data.groupby(["participant", "session_num"])
         test_groups = test_data.groupby(["participant", "session_num"])
-        train_labels = [group[["engagement"]].values for name, group in train_groups]
-        test_labels = [group[["engagement"]].values for name, group in test_groups]
+        train_labels = [group[["engagement"]].astype("int64").values for name, group in train_groups]
+        test_labels = [group[["engagement"]].astype("int64").values for name, group in test_groups]
         train_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in train_groups]
         test_data = [group.drop(columns=["participant", "session_num", "engagement"]).values for name, group in test_groups]
     else:
