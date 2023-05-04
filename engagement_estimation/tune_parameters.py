@@ -66,17 +66,16 @@ pipe += Switch("StandardizationSwitch",
 pipe += PipelineElement("ImbalancedDataTransformer",
                         hyperparameters={"method_name": ["RandomUnderSampler", "RandomOverSampler", "SMOTE"]})
 
-# hyperparamter gamma not used yet (reduces overfitting but unnecessary for already good hyperparameters)
 pipe += PipelineElement("XGBoostClassifier",
-                        hyperparameters={"n_estimators": IntegerRange(50, 500),
-                                         "max_depth": IntegerRange(3, 10),
-                                         "subsample": FloatRange(.5, 1.),
-                                         "colsample_bytree": IntegerRange(.5, 1.),
-                                         "learning_rate": FloatRange(.01, .3),
-                                         "min_child_weight": IntegerRange(1, 6),
-                                         "reg_lambda": FloatRange(.0, 5.),
-                                         "reg_alpha": FloatRange(.0, 5.),
-                                         "gamma": FloatRange(.0, 1.)})
+                        hyperparameters={"n_estimators": IntegerRange(50, 500, step=10),
+                                         "max_depth": IntegerRange(3, 10, step=1),
+                                         "subsample": FloatRange(.5, 1., num=6),
+                                         "colsample_bytree": IntegerRange(.5, 1., num=6),
+                                         "learning_rate": FloatRange(.01, .3, num=16),
+                                         "min_child_weight": IntegerRange(1, 6, step=1),
+                                         "reg_lambda": FloatRange(.0, 5., num=11),
+                                         "reg_alpha": FloatRange(.0, 5., num=11),
+                                         "gamma": FloatRange(.0, 1., num=11)})
 
 dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
 features, dataset_stems = merge_datasets(dataset_files, modalities)
