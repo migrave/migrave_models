@@ -42,3 +42,6 @@ class XGBoostClassifier(BaseEstimator, ClassifierMixin):
 
     def predict_proba(self, X):
         return self.model.predict_proba(X)
+
+    def transform(self, data, targets=None, **kwargs):
+        return data
