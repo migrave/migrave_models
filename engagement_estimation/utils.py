@@ -139,7 +139,7 @@ def standardize_data(data: pd.core.frame.DataFrame,
             data_copy[c] = (data_copy[c] - col_mean) / col_std
 
         # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
-        if c not in NAN_MAX_COLS:
+        if not c.startswith(tuple(NAN_MAX_COLS)):
             min_val = np.nanmin(data_copy[c])
             data_copy[c] = data_copy[c].fillna(min_val)
         else:
@@ -196,7 +196,7 @@ def normalize_data(data: pd.core.frame.DataFrame,
             data_copy[c] = (data_copy[c] - col_min) / (col_max - col_min)
 
         # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
-        if c not in NAN_MAX_COLS:
+        if c.startswith(tuple(NAN_MAX_COLS)):
             min_val = np.nanmin(data_copy[c])
             data_copy[c] = data_copy[c].fillna(min_val)
         else:
