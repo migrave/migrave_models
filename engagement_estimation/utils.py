@@ -335,12 +335,12 @@ def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclud
     if "game" in modalities:
         features.extend(MIGRAVE_GAME_FEATURES)
     df_data = df_data[features]
-    if exclude_feature_regex is not None:
-        df_data = df_data.drop(df_data.filter(regex=exclude_feature_regex).columns, axis=1)
     if exclude_samples_regex is not None:
         for col in df_data:
             if re.compile(exclude_samples_regex).match(col):
                 df_data = df_data[df_data[col].astype(bool)]
+    if exclude_feature_regex is not None:
+        df_data = df_data.drop(df_data.filter(regex=exclude_feature_regex).columns, axis=1)
     dataset_stems = [dataset_stem for dataset_stem in ALLOWED_DATASETS if dataset_stem in dataset_stems]
 
     return df_data, dataset_stems
