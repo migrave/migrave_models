@@ -5,6 +5,7 @@ from pathlib import Path
 import joblib
 import matplotlib.pyplot as plt
 import matplotlib
+import re
 
 matplotlib.use('Agg')
 import numpy as np
@@ -206,8 +207,7 @@ def normalize_data(data: pd.core.frame.DataFrame,
     return data_copy, data_max, data_min
 
 
-def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None,
-                           exclude_feature_regex=None):
+def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None):
     """
     Train on other users
     Input:
@@ -217,8 +217,6 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.copy()
-    if exclude_feature_regex is not None:
-        data = data.drop(data.filter(regex=exclude_feature_regex).columns, axis=1)
     data = data.sort_values(["participant", "session_num", "timestamp"], ascending=[True, True, True])
 
     train_data = data.loc[data["participant"] != idx]
@@ -263,7 +261,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
 
 
 def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols=None, sequence_model=False,
-                              label_issue_file=None, exclude_feature_regex=None):
+                              label_issue_file=None):
     """
     Train on a subset of user data
     Input:
@@ -274,8 +272,6 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
         train_data, train_labels, test_data, test_labels, train_max, train_min
     """
     data = dataframe.loc[dataframe["participant"] == idx].copy()
-    if exclude_feature_regex is not None:
-        data = data.drop(data.filter(regex=exclude_feature_regex).columns, axis=1)
     data = data.sort_values(["session_num", "timestamp"], ascending=[True, True])
     labels = data[["engagement"]]
 
@@ -320,7 +316,7 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
     return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
-def merge_datasets(dataset_files, modalities):
+def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclude_samples_regex=None):
     dataset_stems = []
     features = NON_FEATURES_COLS.copy()
     df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=MIGRAVE_VISUAL_FEATURES)
@@ -338,10 +334,16 @@ def merge_datasets(dataset_files, modalities):
         features.extend(MIGRAVE_AUDIAL_FEATURES)
     if "game" in modalities:
         features.extend(MIGRAVE_GAME_FEATURES)
+    df_data = df_data[features]
+    if exclude_feature_regex is not None:
+        df_data = df_data.drop(df_data.filter(regex=exclude_feature_regex).columns, axis=1)
+    if exclude_samples_regex is not None:
+        for col in df_data:
+            if re.compile(exclude_samples_regex).match(col):
+                df_data = df_data[df_data[col].astype(bool)]
     dataset_stems = [dataset_stem for dataset_stem in ALLOWED_DATASETS if dataset_stem in dataset_stems]
-    df_data_copy = df_data[features].copy()
 
-    return df_data_copy, dataset_stems
+    return df_data, dataset_stems
 
 
 def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
