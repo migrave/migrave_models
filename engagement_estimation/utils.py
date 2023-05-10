@@ -14,6 +14,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 from tensorflow import keras
 
+from models import ALLOWED_CLASSIFIERS
+
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
                            'of_AU14_c', 'of_AU15_c', 'of_AU17_c', 'of_AU20_c', 'of_AU23_c',
@@ -375,7 +377,8 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
 
     for metric, means in results.items():
         fig, ax = plt.subplots()
-        size = 0.3
+        max_rad = 3
+        size = max_rad / len(ALLOWED_CLASSIFIERS)
         cmap = plt.get_cmap("BrBG")
 
         # reorder results based on auroc
