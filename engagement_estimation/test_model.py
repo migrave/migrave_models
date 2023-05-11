@@ -133,7 +133,6 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
     timestamps = features[["timestamp"]]
     labels = features[["engagement"]]
     date_time = features["date_time"].iloc[0]
-    features = features.drop(columns=NON_FEATURES_COLS)
 
     classifier, norm_max, norm_min, modalities_id, dataset_id = load_generalized_classifier(
         experiment_dir=experiment_dir,
@@ -141,6 +140,8 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
         dataset_stems=dataset_stems,
         classifier_name=classifier_name,
         participant_id=participant_id)
+
+    features = features[norm_max.keys()]
 
     features, _, _ = normalize_data(features, max=norm_max, min=norm_min)
     if sequence_model:
