@@ -33,6 +33,8 @@ def create_cv_predictions(experiment_dir: Union[str, Path], datasets: List[str],
 
 
 def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_perspectives: List[str], modalities: List[str], classifier_name: str):
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
     classification_perspective_dfs = []
     dataset_ids = []
     for dataset_perspective in dataset_perspectives:
