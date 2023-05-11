@@ -41,7 +41,7 @@ def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_persp
         dataset_ids.append(dataset_id)
     classification_voting_df = classification_perspective_dfs[0].copy()
     perspectives_score_1 = pd.concat([classification_perspective_df[["scores_1"]] for classification_perspective_df in classification_perspective_dfs], axis=1)
-    perspective_weights = pd.concat([classification_perspective_df[["of_success"]].values for classification_perspective_df in classification_perspective_dfs], axis=1)
+    perspective_weights = pd.concat([classification_perspective_df[["of_success"]] for classification_perspective_df in classification_perspective_dfs], axis=1)
     voting_of_success = perspective_weights.any(axis=1)
     perspective_weights.loc[~voting_of_success] = 1
     classification_voting_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_weights.values)
