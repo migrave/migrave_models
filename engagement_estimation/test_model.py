@@ -19,6 +19,14 @@ from models import KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
 from utils import merge_datasets, normalize_data, NON_FEATURES_COLS, ALLOWED_DATASETS
 
 
+def create_feature_list(classifier_file):
+    classifier, norm_max, norm_min = joblib.load(classifier_file)
+    feature_readme_df = pd.DataFrame({"Features": norm_max.keys(), "Type": norm_max.values(),
+                                      "Modality": ["Video" if "video" in key else "Game Performance" if "ros" in key else " " for key in norm_max.keys()],
+                                      "Description": norm_max.values()})
+    feature_readme_df.to_csv("/Users/schanowski_rfh/Downloads/features_readme.csv")
+
+
 def get_sessions(dataset: str, participant_id: int):
     """
     Finds all session ids for participant in dataset.
@@ -26,10 +34,21 @@ def get_sessions(dataset: str, participant_id: int):
     :param participant_id:
     :return:
     """
-    dataset_file = os.path.join("dataset", dataset)
+    dataset_file = os.path.join("./dataset", dataset)
     df_data = pd.read_csv(dataset_file, index_col=0)
     df_data = df_data.loc[df_data["participant"] == participant_id]
     return df_data["session_num"].unique()
+
+
+def get_participants(dataset: str):
+    """
+    Finds all session ids for participant in dataset.
+    :param dataset:
+    :return:
+    """
+    dataset_file = os.path.join("./dataset", dataset)
+    df_data = pd.read_csv(dataset_file, index_col=0)
+    return df_data["participant"].unique()
 
 
 def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: List[str], dataset_stems: List[str],
@@ -106,7 +125,7 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
     :param sequence_model:
     :return:
     """
-    dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
+    dataset_files = [os.path.join("./dataset", dataset) for dataset in datasets]
     features, dataset_stems = merge_datasets(dataset_files, modalities)
     features = features.loc[features["participant"] == participant_id]
     features = features.loc[features["session_num"] == session]
