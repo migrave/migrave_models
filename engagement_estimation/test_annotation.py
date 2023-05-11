@@ -40,6 +40,7 @@ def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], m
     classification_dfs["label_quality"] = label_quality
     experiment_name = experiment_dir.name
     classification_dfs.to_csv(f"./dataset/{experiment_name}_{modalities_id}_{dataset_id}_{classifier_name}_cross_validation_issues.csv")
+    print(f"{label_issues.sum() / len(label_issues) * 100:.2f}% of all labels have issues.")
 
 
 if __name__ == '__main__':
