@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import Union, List, Optional
 import sys
+from functools import reduce
 import argparse
 import matplotlib
 from matplotlib import pyplot as plt
@@ -39,20 +40,22 @@ def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_persp
     dataset_ids = []
     for dataset_perspective in dataset_perspectives:
         classification_dfs, modalities_id, dataset_id = create_cv_predictions(experiment_dir=experiment_dir, datasets=[dataset_perspective], modalities=modalities, classifier_name=classifier_name)
-        classification_perspective_dfs.append(classification_dfs)
         dataset_ids.append(dataset_id)
-    classification_voting_df = classification_perspective_dfs[0].copy()
-    perspectives_score_1 = pd.concat([classification_perspective_df[["scores_1"]] for classification_perspective_df in classification_perspective_dfs], axis=1)
-    perspective_weights = pd.concat([classification_perspective_df[["of_success"]] for classification_perspective_df in classification_perspective_dfs], axis=1)
-    voting_of_success = perspective_weights.any(axis=1)
-    perspective_weights.loc[~voting_of_success] = 1
-    classification_voting_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_weights.values)
-    classification_voting_df["scores_0"] = 1 - classification_voting_df["scores_1"]
-    classification_voting_df["predictions"] = (classification_voting_df["scores_1"] >= .5).astype(int)
-    classification_voting_df["of_success"] = voting_of_success
+        classification_perspective_dfs.append(classification_dfs)
+    classification_cols = classification_perspective_dfs[0].columns
+    classification_vote_df = reduce(lambda left, right: pd.merge(left, right, on=["participant", "session_num", "timestamp"], how="left"), classification_perspective_dfs)
+    perspectives_score_1 = classification_vote_df.filter(regex="^scores_1.*")
+    perspective_of_success = classification_vote_df.filter(regex="^of_success.*")
+    any_of_success = perspective_of_success.any(axis=1)
+    perspective_of_success.loc[~any_of_success] = 1
+    classification_vote_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_of_success.values)
+    classification_vote_df["scores_0"] = 1 - classification_vote_df["scores_1"]
+    classification_vote_df["predictions"] = (classification_vote_df["scores_1"] >= .5).astype(int)
+    classification_vote_df["of_success"] = any_of_success
+    classification_vote_df = classification_vote_df[classification_cols]
     dataset_ids = [dataset_id for dataset_id in ALLOWED_DATASETS if dataset_id in dataset_ids]
     dataset_voting_id = "voting_" + "_".join(dataset_ids)
-    return classification_voting_df, modalities_id, dataset_voting_id
+    return classification_vote_df, modalities_id, dataset_voting_id
 
 
 def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str, voting: bool):
@@ -78,17 +81,25 @@ def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], m
     print(f"{label_issues.sum() / len(label_issues) * 100:.2f}% of all labels have issues.")
 
 
+class Args:
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable/"
+    modalities = ["video", "game"]
+    datasets = ["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"]
+    classifier_name = "xgboost"
+    voting = 1
+
+
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-ed", "--experiment_dir", type=str,
-                        default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable",
-                        help="Path to the experiment directory")
-    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
-    args = parser.parse_args()
-    # args = Args
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("-ed", "--experiment_dir", type=str,
+    #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable",
+    #                     help="Path to the experiment directory")
+    # parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    # parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    # parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
+    # args = parser.parse_args()
+    args = Args
     for parsed_dir in [args.experiment_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
