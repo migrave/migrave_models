@@ -30,7 +30,6 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
                             classifier_name: str,
                             participants: np.ndarray = [1, 2, 3, 4],
                             minority_weight_factor: int = 1,
-                            label_issue_file: str = None,
                             logdir: str = "./logs") -> List[Dict]:
     """Trains a generalized engagement model (i.e. a model trained on date from
     multiple users). Evaluates the trained model using leave-one-out cross validation
@@ -54,8 +53,7 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
     for p in participants:
         train_data, train_labels, test_data, test_labels, max_norm, min_norm = utils.split_generalized_data(df_data,
                                                                                                             idx=p,
-                                                                                                            sequence_model=sequence_model,
-                                                                                                            label_issue_file=label_issue_file)
+                                                                                                            sequence_model=sequence_model)
 
         train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
         test_unique, test_counts = np.unique(np.concatenate(test_labels).flatten(), return_counts=True)
@@ -112,7 +110,6 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                                participants: np.ndarray = [1, 2, 3, 4],
                                train_percentage: Sequence[float] = [0.8, 0.9],
                                minority_weight_factor: int = 1,
-                               label_issue_file: str = None,
                                logdir: str = "./logs") -> List[Dict]:
     """Trains individualized models (one model for each participant),
     using different train/test split percentages.
@@ -140,8 +137,7 @@ def train_individualized_model(df_data: pd.core.frame.DataFrame,
                 df_data,
                 idx=p,
                 train_percentage=tr_percentage,
-                sequence_model=sequence_model,
-                label_issue_file=label_issue_file)
+                sequence_model=sequence_model)
 
             train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
             test_unique, test_counts = np.unique(np.concatenate(test_labels).flatten(), return_counts=True)
@@ -232,7 +228,7 @@ def train_and_evaluate(config_path: str, logdir: str = "./logs") -> str:
     exclude_samples_regex = config["exclude_samples_regex"]
     dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
 
-    df_data, dataset_stems = utils.merge_datasets(dataset_files, modalities, exclude_feature_regex, exclude_samples_regex)
+    df_data, dataset_stems = utils.merge_datasets(dataset_files, modalities, exclude_feature_regex, exclude_samples_regex, label_issue_file)
 
     dataset_logdir = os.path.join(logdir, experiment_name,
                                   "_".join([modality for modality in ALLOWED_MODALITIES if modality in modalities]),
@@ -261,7 +257,6 @@ def train_and_evaluate(config_path: str, logdir: str = "./logs") -> str:
                                                           clf_name,
                                                           minority_weight_factor=minority_weight_factor,
                                                           participants=participants,
-                                                          label_issue_file=label_issue_file,
                                                           logdir=dataset_logdir)
                 else:
                     Logger.warning(f"Number of participant < 2. Skipping training generalized model")
@@ -270,7 +265,6 @@ def train_and_evaluate(config_path: str, logdir: str = "./logs") -> str:
                                                          clf_name,
                                                          minority_weight_factor=minority_weight_factor,
                                                          participants=participants,
-                                                         label_issue_file=label_issue_file,
                                                          logdir=dataset_logdir)
             # save results
             if clf_results:
