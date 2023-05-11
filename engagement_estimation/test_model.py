@@ -141,7 +141,7 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
         classifier_name=classifier_name,
         participant_id=participant_id)
 
-    of_success = features.filter(regex="^ of_success_features. *").values
+    of_success = features.filter(regex="^of_success_features.*").values
     features = features[norm_max.keys()]
 
     features, _, _ = normalize_data(features, max=norm_max, min=norm_min)
