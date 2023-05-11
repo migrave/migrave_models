@@ -209,7 +209,7 @@ def normalize_data(data: pd.core.frame.DataFrame,
     return data_copy, data_max, data_min
 
 
-def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False, label_issue_file=None):
+def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model=False):
     """
     Train on other users
     Input:
@@ -223,9 +223,6 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
 
     train_data = data.loc[data["participant"] != idx]
     test_data = data.loc[data["participant"] == idx]
-
-    if label_issue_file is not None:
-        train_data = remove_label_issues(label_issue_file=label_issue_file, dataset_df=train_data.copy())
 
     train_labels = train_data[["engagement"]]
     test_labels = test_data[["engagement"]]
@@ -262,8 +259,7 @@ def split_generalized_data(dataframe, idx, non_feature_cols=None, sequence_model
     return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
-def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols=None, sequence_model=False,
-                              label_issue_file=None):
+def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols=None, sequence_model=False):
     """
     Train on a subset of user data
     Input:
@@ -281,10 +277,6 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
 
     train_data, test_data, train_labels, test_labels = train_test_split(data, labels, test_size=test_split_size,
                                                                         shuffle=False)
-
-    if label_issue_file is not None:
-        train_data = remove_label_issues(label_issue_file=label_issue_file, dataset_df=train_data.copy())
-        train_labels = train_data[["engagement"]]
 
     if non_feature_cols:
         train_data = train_data.drop(columns=non_feature_cols)
@@ -318,7 +310,7 @@ def split_individualized_data(dataframe, idx, train_percentage, non_feature_cols
     return train_data, train_labels, test_data, test_labels, train_max, train_min
 
 
-def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclude_samples_regex=None):
+def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclude_samples_regex=None, label_issue_file=None):
     dataset_stems = []
     features = NON_FEATURES_COLS.copy()
     df_data = pd.read_csv(dataset_files[0], index_col=0).drop(columns=MIGRAVE_VISUAL_FEATURES)
@@ -343,6 +335,8 @@ def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclud
                 df_data = df_data[df_data[col].astype(bool)]
     if exclude_feature_regex is not None:
         df_data = df_data.drop(df_data.filter(regex=exclude_feature_regex).columns, axis=1)
+    if label_issue_file is not None:
+        df_data = remove_label_issues(label_issue_file, df_data)
     dataset_stems = [dataset_stem for dataset_stem in ALLOWED_DATASETS if dataset_stem in dataset_stems]
 
     return df_data, dataset_stems
