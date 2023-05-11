@@ -56,6 +56,8 @@ def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_persp
 
 
 def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str, voting: bool):
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
     if voting:
         classification_dfs, modalities_id, dataset_id = create_cv_voting_predictions(experiment_dir=experiment_dir,
                                                                               dataset_perspectives=datasets, modalities=modalities,
