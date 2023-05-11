@@ -1,7 +1,7 @@
 from cleanlab.filter import find_label_issues, get_label_quality_scores
 from cleanlab.dataset import health_summary
 from test_model import test_model, get_sessions, get_participants
-from utils import merge_datasets
+from utils import merge_datasets, ALLOWED_DATASETS
 import numpy as np
 import pandas as pd
 import os
@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 # matplotlib.use("TkAgg")
 
 
-def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str):
+def create_cv_predictions(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str):
     if isinstance(experiment_dir, str):
         experiment_dir = Path(experiment_dir)
     participant_ids = get_participants(dataset=datasets[0])
@@ -29,6 +29,37 @@ def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], m
             classification_df["session_num"] = session
             classification_dfs.append(classification_df)
     classification_dfs = pd.concat(classification_dfs, axis=0)
+    return classification_dfs, modalities_id, dataset_id
+
+
+def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_perspectives: List[str], modalities: List[str], classifier_name: str):
+    classification_perspective_dfs = []
+    dataset_ids = []
+    for dataset_perspective in dataset_perspectives:
+        classification_dfs, modalities_id, dataset_id = create_cv_predictions(experiment_dir=experiment_dir, datasets=[dataset_perspective], modalities=modalities, classifier_name=classifier_name)
+        classification_perspective_dfs.append(classification_dfs)
+        dataset_ids.append(dataset_id)
+    classification_voting_df = classification_perspective_dfs[0].copy()
+    perspectives_score_1 = pd.concat([classification_perspective_df[["scores_1"]] for classification_perspective_df in classification_perspective_dfs], axis=1)
+    perspective_weights = pd.concat([classification_perspective_df[["of_success"]].values for classification_perspective_df in classification_perspective_dfs], axis=1)
+    voting_of_success = perspective_weights.any(axis=1)
+    perspective_weights.loc[~voting_of_success] = 1
+    classification_voting_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_weights.values)
+    classification_voting_df["scores_0"] = 1 - classification_voting_df["scores_1"]
+    classification_voting_df["predictions"] = (classification_voting_df["scores_1"] >= .5).astype(int)
+    classification_voting_df["of_success"] = voting_of_success
+    dataset_ids = [dataset_id for dataset_id in ALLOWED_DATASETS if dataset_id in dataset_ids]
+    dataset_voting_id = "voting_" + "_".join(dataset_ids)
+    return classification_voting_df, modalities_id, dataset_voting_id
+
+
+def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str, voting: bool):
+    if voting:
+        classification_dfs, modalities_id, dataset_id = create_cv_voting_predictions(experiment_dir=experiment_dir,
+                                                                              dataset_perspectives=datasets, modalities=modalities,
+                                                                              classifier_name=classifier_name)
+    else:
+        classification_dfs, modalities_id, dataset_id = create_cv_predictions(experiment_dir=experiment_dir, datasets=datasets, modalities=modalities, classifier_name=classifier_name)
     labels = classification_dfs["labels"].to_numpy()
     pred_probs = classification_dfs[["scores_0", "scores_1"]].to_numpy()
     classification_dfs = classification_dfs.sort_values(["participant", "session_num", "timestamp"],
@@ -51,13 +82,14 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
     parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
     parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
     args = parser.parse_args()
     # args = Args
     for parsed_dir in [args.experiment_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
             sys.exit(0)
-    create_label_issues(experiment_dir=args.experiment_dir, datasets=args.datasets, modalities=args.modalities, classifier_name=args.classifier_name)
+    create_label_issues(experiment_dir=args.experiment_dir, datasets=args.datasets, modalities=args.modalities, classifier_name=args.classifier_name, voting=args.voting)
 
 
 

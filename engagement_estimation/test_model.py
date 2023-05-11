@@ -141,6 +141,7 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
         classifier_name=classifier_name,
         participant_id=participant_id)
 
+    of_success = features.filter(regex="^ of_success_features. *").values
     features = features[norm_max.keys()]
 
     features, _, _ = normalize_data(features, max=norm_max, min=norm_min)
@@ -150,7 +151,7 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
     else:
         features = features.values
         labels = labels.values
-    return features, labels, timestamps, date_time, classifier, modalities_id, dataset_id
+    return features, labels, of_success, timestamps, date_time, classifier, modalities_id, dataset_id
 
 
 def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifier_name: str,
@@ -166,7 +167,7 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
     :return:
     """
     sequence_model = True if classifier_name in SEQUENTIAL_CLASSIFIERS else False
-    features, labels, timestamps, date_time, classifier, modalities_id, dataset_id = load_data_and_classifier(
+    features, labels, of_success, timestamps, date_time, classifier, modalities_id, dataset_id = load_data_and_classifier(
         experiment_dir=experiment_dir,
         classifier_name=classifier_name,
         modalities=modalities,
@@ -208,6 +209,7 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
     classification_df["scores_1"] = scores_1
     classification_df["predictions"] = predictions
     classification_df["labels"] = labels
+    classification_df["of_success"] = of_success
 
     return classification_df, date_time, modalities_id, dataset_id
 
