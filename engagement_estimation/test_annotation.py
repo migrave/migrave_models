@@ -1,61 +1,9 @@
 from cleanlab.filter import find_label_issues, get_label_quality_scores
-from cleanlab.dataset import health_summary
-from test_model import test_model, get_sessions, get_participants
-from utils import merge_datasets, ALLOWED_DATASETS
-import numpy as np
-import pandas as pd
-import os
+from generate_classifier_outputs import create_cv_predictions, create_cv_voting_predictions
 from pathlib import Path
 from typing import Union, List, Optional
 import sys
-from functools import reduce
 import argparse
-import matplotlib
-from matplotlib import pyplot as plt
-# matplotlib.use("TkAgg")
-
-
-def create_cv_predictions(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str):
-    if isinstance(experiment_dir, str):
-        experiment_dir = Path(experiment_dir)
-    participant_ids = get_participants(dataset=datasets[0])
-    classification_dfs = []
-    for participant_id in participant_ids:
-        sessions = get_sessions(dataset=datasets[0], participant_id=participant_id)
-        for session in sessions:
-            classification_df, date_time, modalities_id, dataset_id = test_model(experiment_dir=experiment_dir, modalities=modalities,
-                                                    classifier_name=classifier_name, participant_id=participant_id,
-                                                    datasets=datasets, session=session)
-            classification_df["participant"] = participant_id
-            classification_df["session_num"] = session
-            classification_dfs.append(classification_df)
-    classification_dfs = pd.concat(classification_dfs, axis=0)
-    return classification_dfs, modalities_id, dataset_id
-
-
-def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_perspectives: List[str], modalities: List[str], classifier_name: str):
-    if isinstance(experiment_dir, str):
-        experiment_dir = Path(experiment_dir)
-    classification_perspective_dfs = []
-    dataset_ids = []
-    for dataset_perspective in dataset_perspectives:
-        classification_dfs, modalities_id, dataset_id = create_cv_predictions(experiment_dir=experiment_dir, datasets=[dataset_perspective], modalities=modalities, classifier_name=classifier_name)
-        dataset_ids.append(dataset_id)
-        classification_perspective_dfs.append(classification_dfs)
-    classification_cols = classification_perspective_dfs[0].columns
-    classification_vote_df = reduce(lambda left, right: pd.merge(left, right, on=["participant", "session_num", "timestamp"], how="left"), classification_perspective_dfs)
-    perspectives_score_1 = classification_vote_df.filter(regex="^scores_1.*")
-    perspective_of_success = classification_vote_df.filter(regex="^of_success.*")
-    any_of_success = perspective_of_success.any(axis=1)
-    perspective_of_success.loc[~any_of_success] = 1
-    classification_vote_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_of_success.values)
-    classification_vote_df["scores_0"] = 1 - classification_vote_df["scores_1"]
-    classification_vote_df["predictions"] = (classification_vote_df["scores_1"] >= .5).astype(int)
-    classification_vote_df["of_success"] = any_of_success
-    classification_vote_df = classification_vote_df[classification_cols]
-    dataset_ids = [dataset_id for dataset_id in ALLOWED_DATASETS if dataset_id in dataset_ids]
-    dataset_voting_id = "voting_" + "_".join(dataset_ids)
-    return classification_vote_df, modalities_id, dataset_voting_id
 
 
 def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str, voting: bool):

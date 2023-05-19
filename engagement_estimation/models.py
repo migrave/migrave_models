@@ -1,7 +1,6 @@
 from typing import Union
 
 import numpy as np
-from sklearn import metrics
 from sklearn import neighbors
 from sklearn.model_selection import train_test_split
 import sklearn.ensemble as ensemble
@@ -17,13 +16,7 @@ from sklearn_crfsuite import CRF
 from catboost import CatBoostClassifier
 from lightgbm import LGBMClassifier, early_stopping
 
-ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
-                       'knn', 'naive_bayes', 'logistic_regression', "neural_network",
-                       "recurrent_neural_network", "hmm", "crf", "catboost", "lightgbm"]
-
-SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
-
-KERAS_CLASSIFIERS = ["recurrent_neural_network", "hmm"]
+from utils import create_result, ALLOWED_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS, KERAS_CLASSIFIERS
 
 
 def get_classifier(model_name: str, n_class_0, n_class_1, minority_weight_factor) -> Union[
@@ -64,13 +57,17 @@ def get_classifier(model_name: str, n_class_0, n_class_1, minority_weight_factor
                                                 n_jobs=-1,
                                                 class_weight=class_weight)
     elif "xgboost" == model_name:
-        model = xgboost.XGBClassifier(n_estimators=100,
-                                      max_depth=6,
+        model = xgboost.XGBClassifier(n_estimators=298,
+                                      max_depth=9,
+                                      min_child_weight=4,
+                                      gamma=.1,
+                                      subsample=.9,
+                                      colsample_bytree=.9,
+                                      reg_alpha=1e-5,
+                                      reg_lambda=1.5,
                                       booster='gbtree',
                                       n_jobs=-1,
                                       eval_metric='logloss',
-                                      subsample=0.8,
-                                      colsample_bynode=0.8,
                                       scale_pos_weight=scale_pos_weight,
                                       tree_method="gpu_hist",
                                       gpu_id=0,
@@ -231,13 +228,7 @@ def sklearn(train_data,
         test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     elif isinstance(classifier, xgboost.XGBClassifier):
-        train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels,
-                                                                                        test_size=0.1, shuffle=False)
-        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
-        if len(train_unique) == 1:
-            msg = f"Only one class in train data after validation split."
-            return classifier, msg
-        classifier.fit(train_data, train_labels, eval_set=[(validation_data, validation_labels)], early_stopping_rounds=10)
+        classifier.fit(train_data, train_labels)
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
         scores_0 = scores[:, 0]
@@ -279,29 +270,6 @@ def sklearn(train_data,
         scores_0 = scores[:, 0]
         predictions = [target_names[np.argmax(sc)] for sc in scores]
 
-    # classification report
-    cls_report = metrics.classification_report(test_labels,
-                                               predictions,
-                                               target_names=list(target_names.values()),
-                                               output_dict=True)
-    confusion_mtx = metrics.confusion_matrix(test_labels, predictions)
-    auroc_1 = metrics.roc_auc_score(test_labels, scores_1)
-    auprc_1 = metrics.average_precision_score(test_labels, scores_1)
-    auroc_0 = metrics.roc_auc_score(1 - test_labels, scores_0)
-    auprc_0 = metrics.average_precision_score(1 - test_labels, scores_0)
-
-    result = {}
-    result["AUROC_1"] = auroc_1
-    result["AUPRC_1"] = auprc_1
-    result["AUROC_0"] = auroc_0
-    result["AUPRC_0"] = auprc_0
-    for cls in cls_report.keys():
-        if cls in target_names.values():
-            result[f"Precision_{cls}"] = cls_report[cls]["precision"]
-            result[f"Recall_{cls}"] = cls_report[cls]["recall"]
-            result[f"F1_{cls}"] = cls_report[cls]["f1-score"]
-        elif cls == "accuracy":
-            result["Accuracy"] = cls_report[cls]
-    result["C_ij(i=label,j=prediction)"] = confusion_mtx
+    result = create_result(test_labels, predictions, target_names, scores_1, scores_0)
 
     return classifier, result

@@ -85,14 +85,12 @@ def train_generalized_model(df_data: pd.core.frame.DataFrame,
             print(f"{result} Excluded VP{p} for generalized model.")
             continue
 
-        result['Train'] = ", ".join(str(x) for x in participants if x != p)
-        result['Test'] = p
-        result["Train_0"] = train_counts[np.argmin(train_unique)]
-        result["Train_1"] = train_counts[np.argmax(train_unique)]
-        result["Test_0"] = test_counts[np.argmin(test_unique)]
-        result["Test_1"] = test_counts[np.argmax(test_unique)]
-        result["Total_0"] = result["Train_0"] + result["Test_0"]
-        result["Total_1"] = result["Train_1"] + result["Test_1"]
+        train_0 = train_counts[np.argmin(train_unique)]
+        train_1 = train_counts[np.argmax(train_unique)]
+        test_0 = test_counts[np.argmin(test_unique)]
+        test_1 = test_counts[np.argmax(test_unique)]
+
+        result = utils.extend_generalized_result(result, participants, p, train_0, train_1, test_0, test_1)
 
         evaluation_results.append(result)
 

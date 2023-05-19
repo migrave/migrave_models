@@ -13,18 +13,26 @@ import sys
 import cv2
 from matplotlib import pyplot as plt
 import argparse
+from functools import reduce
 
 from train_and_eval_models import ALLOWED_MODALITIES
-from models import KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
-from utils import merge_datasets, normalize_data, NON_FEATURES_COLS, ALLOWED_DATASETS
+from utils import merge_datasets, normalize_data, create_result, extend_generalized_result, NON_FEATURES_COLS, ALLOWED_DATASETS, KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
 
 
-def create_feature_list(classifier_file):
-    classifier, norm_max, norm_min = joblib.load(classifier_file)
+def create_feature_list(classifier_file: Union[Path, str]):
+    """
+    Creatures a feature csv from a classifier joblib containing the classifier, norm_max, norm_min.
+    :param classifier_file:
+    :return:
+    """
+    if isinstance(classifier_file, str):
+        classifier_file = Path(classifier_file)
+    classifier, norm_max, norm_min = joblib.load(open(classifier_file, "rb"))
     feature_readme_df = pd.DataFrame({"Features": norm_max.keys(), "Type": norm_max.values(),
                                       "Modality": ["Video" if "video" in key else "Game Performance" if "ros" in key else " " for key in norm_max.keys()],
                                       "Description": norm_max.values()})
-    feature_readme_df.to_csv("/Users/schanowski_rfh/Downloads/features_readme.csv")
+    feature_csv = classifier_file.stem + "_features_readme.csv"
+    feature_readme_df.to_csv(classifier_file.parent.joinpath(feature_csv))
 
 
 def get_sessions(dataset: str, participant_id: int):
@@ -112,7 +120,8 @@ def get_xgboost_cv_feature_importance(experiment_dir: Union[str, Path], modaliti
 
 
 def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: str, modalities: List[str],
-                             datasets: List[str], participant_id: int, session: int, sequence_model: bool):
+                             datasets: List[str], participant_id: int, session: int, sequence_model: bool,
+                             label_issue_file: Union[Path, str] = None):
     """
     Loads the features and classifier with respect to the used modalities and perspectives and filters for the
     participant.
@@ -123,10 +132,11 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
     :param participant_id:
     :param session:
     :param sequence_model:
+    :param label_issue_file:
     :return:
     """
     dataset_files = [os.path.join("./dataset", dataset) for dataset in datasets]
-    features, dataset_stems = merge_datasets(dataset_files, modalities)
+    features, dataset_stems = merge_datasets(dataset_files, modalities, label_issue_file=label_issue_file)
     features = features.loc[features["participant"] == participant_id]
     features = features.loc[features["session_num"] == session]
     features = features.sort_values(["timestamp"], ascending=[True])
@@ -155,7 +165,8 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
 
 
 def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifier_name: str,
-               participant_id: int, datasets: List[str], session: int, target_names={0: 0, 1: 1}):
+               participant_id: int, datasets: List[str], session: int, target_names={0: 0, 1: 1},
+               label_issue_file: Union[Path, str] = None):
     """
     Predicts probabilities for classes with respect to time.
     :param experiment_dir:
@@ -164,6 +175,7 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
     :param participant_id:
     :param persepctives:
     :param session:
+    :param label_issue_file:
     :return:
     """
     sequence_model = True if classifier_name in SEQUENTIAL_CLASSIFIERS else False
@@ -174,7 +186,8 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
         datasets=datasets,
         participant_id=participant_id,
         session=session,
-        sequence_model=sequence_model)
+        sequence_model=sequence_model,
+        label_issue_file=label_issue_file)
     if isinstance(classifier, keras.Sequential):
         scores_1 = classifier.predict(features)
         scores_1 = [score[0] for score in scores_1]
@@ -212,6 +225,122 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
     classification_df["of_success"] = of_success
 
     return classification_df, date_time, modalities_id, dataset_id
+
+
+def create_cv_predictions(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str],
+                          classifier_name: str, label_issue_file: Union[Path, str] = None):
+    """
+    Creates cross validation predictions for all models in one run.
+    :param experiment_dir:
+    :param datasets:
+    :param modalities:
+    :param classifier_name:
+    :param label_issue_file:
+    :return:
+    """
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
+    participant_ids = get_participants(dataset=datasets[0])
+    classification_dfs = []
+    for participant_id in participant_ids:
+        sessions = get_sessions(dataset=datasets[0], participant_id=participant_id)
+        for session in sessions:
+            classification_df, date_time, modalities_id, dataset_id = test_model(experiment_dir=experiment_dir,
+                                                                                 modalities=modalities,
+                                                                                 classifier_name=classifier_name,
+                                                                                 participant_id=participant_id,
+                                                                                 datasets=datasets, session=session,
+                                                                                 label_issue_file=label_issue_file)
+            classification_df["participant"] = participant_id
+            classification_df["session_num"] = session
+            classification_dfs.append(classification_df)
+    classification_dfs = pd.concat(classification_dfs, axis=0)
+    return classification_dfs, modalities_id, dataset_id
+
+
+def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_perspectives: List[str],
+                                 modalities: List[str], classifier_name: str,
+                                 label_issue_file: Union[Path, str] = None):
+    """
+    Creates soft coting classifier predictions from cross validation prediction of multiple models (one model per camera)
+    :param experiment_dir:
+    :param dataset_perspectives:
+    :param modalities:
+    :param classifier_name:
+    :param label_issue_file:
+    :return:
+    """
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
+    classification_perspective_dfs = []
+    dataset_ids = []
+    for dataset_perspective in dataset_perspectives:
+        classification_dfs, modalities_id, dataset_id = create_cv_predictions(experiment_dir=experiment_dir,
+                                                                              datasets=[dataset_perspective],
+                                                                              modalities=modalities,
+                                                                              classifier_name=classifier_name,
+                                                                              label_issue_file=label_issue_file)
+        dataset_ids.append(dataset_id)
+        classification_perspective_dfs.append(classification_dfs)
+    classification_cols = classification_perspective_dfs[0].columns
+    classification_vote_df = reduce(lambda left, right: pd.merge(left, right, on=["participant", "session_num", "timestamp"], how="left"), classification_perspective_dfs)
+    perspectives_score_1 = classification_vote_df.filter(regex="^scores_1.*")
+    perspective_of_success = classification_vote_df.filter(regex="^of_success.*")
+    any_of_success = perspective_of_success.any(axis=1)
+    perspective_of_success.loc[~any_of_success] = 1
+    classification_vote_df["scores_1"] = np.average(perspectives_score_1.values, axis=1, weights=perspective_of_success.values)
+    classification_vote_df["scores_0"] = 1 - classification_vote_df["scores_1"]
+    classification_vote_df["predictions"] = (classification_vote_df["scores_1"] >= .5).astype(int)
+    classification_vote_df["of_success"] = any_of_success
+    classification_vote_df = classification_vote_df[classification_cols]
+    dataset_ids = [dataset_id for dataset_id in ALLOWED_DATASETS if dataset_id in dataset_ids]
+    dataset_voting_id = "voting_" + "_".join(dataset_ids)
+    return classification_vote_df, modalities_id, dataset_voting_id
+
+
+def create_cv_voting_results(experiment_dir: Union[str, Path], dataset_perspectives: List[str], modalities: List[str],
+                             classifier_name: str, label_issue_file: Union[Path, str] = None):
+    """
+    Creates result csv (metrics and confusion matrices) from soft voting classifier predictions.
+    :param experiment_dir:
+    :param dataset_perspectives:
+    :param modalities:
+    :param classifier_name:
+    :param label_issue_file:
+    :return:
+    """
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
+    classification_df, modalities_id, dataset_voting_id = create_cv_voting_predictions(experiment_dir=experiment_dir,
+                                                                                       dataset_perspectives=dataset_perspectives,
+                                                                                       modalities=modalities,
+                                                                                       classifier_name=classifier_name,
+                                                                                       label_issue_file=label_issue_file)
+    participants = sorted(classification_df["participant"].unique())
+    evaluation_results = []
+    for p in participants:
+        train_data = classification_df.loc[classification_df["participant"] != p]
+        test_data = classification_df.loc[classification_df["participant"] == p]
+        train_labels = train_data["labels"]
+        test_labels = test_data["labels"]
+        predictions = test_data["predictions"]
+        target_names = {0: 0, 1: 1}
+        scores_1 = test_data["scores_1"]
+        scores_0 = test_data["scores_0"]
+        result = create_result(test_labels, predictions, target_names, scores_1, scores_0)
+        train_unique, train_counts = np.unique(train_labels.values, return_counts=True)
+        test_unique, test_counts = np.unique(test_labels.values, return_counts=True)
+        train_0 = train_counts[np.argmin(train_unique)]
+        train_1 = train_counts[np.argmax(train_unique)]
+        test_0 = test_counts[np.argmin(test_unique)]
+        test_1 = test_counts[np.argmax(test_unique)]
+        result = extend_generalized_result(result, participants, p, train_0, train_1, test_0, test_1)
+        evaluation_results.append(result)
+    logdir = experiment_dir.joinpath("voting_classifier")
+    logdir.mkdir(parents=True, exist_ok=True)
+    clf_result_pd = pd.DataFrame(columns=list(evaluation_results[0].keys()))
+    clf_result_pd = clf_result_pd.append(evaluation_results, ignore_index=True, sort=False).round(3)
+    clf_result_pd.to_csv("{}/{}_{}_{}.csv".format(logdir, modalities_id, dataset_voting_id, classifier_name), index=False)
 
 
 def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str, date_time: str):
@@ -348,38 +477,41 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
 
 
 class Args:
-    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues"
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues"
     data_dir = "/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten"
     output_dir = "/media/veracrypt1/MigrAVEProcessed"
-    modalities = ["video", "audio", "game"]
+    modalities = ["video", "game"]
     datasets = ["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"]
     participant_ids = [1, 11, 19]
     sessions = None
     classifier_name = "xgboost"
+    label_issue_file = None #  "exclude_op_of_sucess_ros_scalable_video_game_voting_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-ed", "--experiment_dir", type=str,
-                        default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues",
-                        help="Path to the experiment directory")
-    parser.add_argument("-dd", "--data_dir", type=str,
-                        default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
-    parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
-                        help="Path to the output directory")
-    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
-    parser.add_argument("-s", "--sessions", type=int, nargs="+", help="List of sessions")
-    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    args = parser.parse_args()
-    # args = Args
+    # parser.add_argument("-ed", "--experiment_dir", type=str,
+    #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues",
+    #                     help="Path to the experiment directory")
+    # parser.add_argument("-dd", "--data_dir", type=str,
+    #                     default="/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten", help="Path to the data directory")
+    # parser.add_argument("-od", "--output_dir", type=str, default="/media/veracrypt1/MigrAVEProcessed",
+    #                     help="Path to the output directory")
+    # parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    # parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    # parser.add_argument("-pi", "--participant_ids", required=True, type=int, nargs="+", help="List of participant IDs")
+    # parser.add_argument("-s", "--sessions", type=int, nargs="+", help="List of sessions")
+    # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    # args = parser.parse_args()
+    args = Args
     for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
             sys.exit(0)
-    generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
-                              modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
-                              sessions=args.sessions, classifier_name=args.classifier_name)
+    create_cv_voting_results(experiment_dir=args.experiment_dir, dataset_perspectives=args.datasets,
+                             modalities=args.modalities, classifier_name=args.classifier_name, label_issue_file=args.label_issue_file)
+    # generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
+    #                           modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
+    #                           sessions=args.sessions, classifier_name=args.classifier_name)
 
-    #get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)
+    # get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)

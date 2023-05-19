@@ -11,10 +11,17 @@ matplotlib.use('Agg')
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from sklearn.utils import shuffle
 from tensorflow import keras
 
-from models import ALLOWED_CLASSIFIERS
+ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
+                       'knn', 'naive_bayes', 'logistic_regression', "neural_network",
+                       "recurrent_neural_network", "hmm", "crf", "catboost", "lightgbm"]
+
+SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
+
+KERAS_CLASSIFIERS = ["recurrent_neural_network", "hmm"]
 
 MIGRAVE_VISUAL_FEATURES = ['of_AU01_c', 'of_AU02_c', 'of_AU04_c', 'of_AU05_c',
                            'of_AU06_c', 'of_AU07_c', 'of_AU09_c', 'of_AU10_c', 'of_AU12_c',
@@ -355,6 +362,46 @@ def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
     dataset_df = dataset_df[dataset_df["_merge"] == "left_only"][data_cols]
 
     return dataset_df
+
+
+def create_result(test_labels, predictions, target_names, scores_1, scores_0):
+    # classification report
+    cls_report = metrics.classification_report(test_labels,
+                                               predictions,
+                                               target_names=list(target_names.values()),
+                                               output_dict=True)
+    confusion_mtx = metrics.confusion_matrix(test_labels, predictions)
+    auroc_1 = metrics.roc_auc_score(test_labels, scores_1)
+    auprc_1 = metrics.average_precision_score(test_labels, scores_1)
+    auroc_0 = metrics.roc_auc_score(1 - test_labels, scores_0)
+    auprc_0 = metrics.average_precision_score(1 - test_labels, scores_0)
+
+    result = {}
+    result["AUROC_1"] = auroc_1
+    result["AUPRC_1"] = auprc_1
+    result["AUROC_0"] = auroc_0
+    result["AUPRC_0"] = auprc_0
+    for cls in cls_report.keys():
+        if cls in target_names.values():
+            result[f"Precision_{cls}"] = cls_report[cls]["precision"]
+            result[f"Recall_{cls}"] = cls_report[cls]["recall"]
+            result[f"F1_{cls}"] = cls_report[cls]["f1-score"]
+        elif cls == "accuracy":
+            result["Accuracy"] = cls_report[cls]
+    result["C_ij(i=label,j=prediction)"] = confusion_mtx
+    return result
+
+
+def extend_generalized_result(result, participants, p, train_0, train_1, test_0, test_1):
+    result['Train'] = ", ".join(str(x) for x in participants if x != p)
+    result['Test'] = p
+    result["Train_0"] = train_0
+    result["Train_1"] = train_1
+    result["Test_0"] = test_0
+    result["Test_1"] = test_1
+    result["Total_0"] = result["Train_0"] + result["Test_0"]
+    result["Total_1"] = result["Train_1"] + result["Test_1"]
+    return result
 
 
 def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
