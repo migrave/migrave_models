@@ -38,16 +38,14 @@ class Args:
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("-ed", "--experiment_dir", type=str,
-    #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable",
-    #                     help="Path to the experiment directory")
-    # parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    # parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    # parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
-    # args = parser.parse_args()
-    args = Args
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-ed", "--experiment_dir", type=str, help="Path to the experiment directory")
+    parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
+    parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
+    parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
+    parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
+    args = parser.parse_args()
+    # args = Args
     for parsed_dir in [args.experiment_dir]:
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")

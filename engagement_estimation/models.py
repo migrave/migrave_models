@@ -57,17 +57,13 @@ def get_classifier(model_name: str, n_class_0, n_class_1, minority_weight_factor
                                                 n_jobs=-1,
                                                 class_weight=class_weight)
     elif "xgboost" == model_name:
-        model = xgboost.XGBClassifier(n_estimators=298,
-                                      max_depth=9,
-                                      min_child_weight=4,
-                                      gamma=.1,
-                                      subsample=.9,
-                                      colsample_bytree=.9,
-                                      reg_alpha=1e-5,
-                                      reg_lambda=1.5,
+        model = xgboost.XGBClassifier(n_estimators=100,
+                                      max_depth=6,
                                       booster='gbtree',
                                       n_jobs=-1,
                                       eval_metric='logloss',
+                                      subsample=0.8,
+                                      colsample_bynode=0.8,
                                       scale_pos_weight=scale_pos_weight,
                                       tree_method="gpu_hist",
                                       gpu_id=0,
@@ -228,7 +224,13 @@ def sklearn(train_data,
         test_labels = np.concatenate(test_labels).flatten()
         predictions = [target_names[np.argmax(sc)] for sc in scores]
     elif isinstance(classifier, xgboost.XGBClassifier):
-        classifier.fit(train_data, train_labels)
+        train_data, validation_data, train_labels, validation_labels = train_test_split(train_data, train_labels,
+                                                                                        test_size=0.1, shuffle=False)
+        train_unique, train_counts = np.unique(np.concatenate(train_labels).flatten(), return_counts=True)
+        if len(train_unique) == 1:
+            msg = f"Only one class in train data after validation split."
+            return classifier, msg
+        classifier.fit(train_data, train_labels, eval_set=[(validation_data, validation_labels)], early_stopping_rounds=10)
         scores = classifier.predict_proba(test_data)
         scores_1 = scores[:, 1]
         scores_0 = scores[:, 0]

@@ -1,3 +1,16 @@
+"""<generate_classifier_outputs> <collection of function to test models and experiments>
+
+<generate_classifier_outputs> Long description
+    - multiple function to test models and experiments after training have been implemented here
+    - see function docstrings for more info
+    - this script is meant to be used in an IDE
+    - to run change parameters at the bottom of this script and call functions in the __main__ section
+
+Copyright© 2022
+Rheinische Fachhochschule Koeln - all rights reserved
+Author: Julian Schanowski <julian.schanowski@rfh-koeln.de>
+Project: MigrAVE
+"""
 from pathlib import Path
 from typing import Union, List, Optional
 import joblib
@@ -11,6 +24,8 @@ from sklearn_crfsuite import CRF
 import xgboost
 import sys
 import cv2
+import matplotlib
+matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 import argparse
 from functools import reduce
@@ -22,7 +37,7 @@ from utils import merge_datasets, normalize_data, create_result, extend_generali
 def create_feature_list(classifier_file: Union[Path, str]):
     """
     Creatures a feature csv from a classifier joblib containing the classifier, norm_max, norm_min.
-    :param classifier_file:
+    :param classifier_file: joblib file containing the classifier, norm_max, norm_min
     :return:
     """
     if isinstance(classifier_file, str):
@@ -38,8 +53,8 @@ def create_feature_list(classifier_file: Union[Path, str]):
 def get_sessions(dataset: str, participant_id: int):
     """
     Finds all session ids for participant in dataset.
-    :param dataset:
-    :param participant_id:
+    :param dataset: name of dataset file with features
+    :param participant_id: participant id
     :return:
     """
     dataset_file = os.path.join("./dataset", dataset)
@@ -51,7 +66,7 @@ def get_sessions(dataset: str, participant_id: int):
 def get_participants(dataset: str):
     """
     Finds all session ids for participant in dataset.
-    :param dataset:
+    :param dataset: name of dataset file with features
     :return:
     """
     dataset_file = os.path.join("./dataset", dataset)
@@ -64,10 +79,11 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
     """
     Loads classifier which was testet on participant with participant_id in the leave-one-out-CV including the corresponding
     normalization data.
-    :param experiment_dir:
-    :param modalities:
-    :param dataset_stems:
-    :param participant_id:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param modalities: modalities
+    :param dataset_stems: datasets
+    :param classifier_name: classifier name
+    :param participant_id: participant id
     :return:
     """
     if isinstance(experiment_dir, str):
@@ -97,11 +113,11 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
 def get_xgboost_cv_feature_importance(experiment_dir: Union[str, Path], modalities: List[str], datasets: List[str],
                                       participant_ids: List[int]):
     """
-    Calculates mean of cross validated feature importances of xgboost models.
-    :param experiment_dir:
-    :param modalities:
-    :param datasets:
-    :param participant_ids:
+    Calculates mean of cross validated feature importance of xgboost models.
+    :param experiment_dir:  top level directory of experiment (defined in config file)
+    :param modalities: modalities
+    :param datasets: datasets
+    :param participant_ids: participant ids
     :return:
     """
     dataset_stems = [os.path.splitext(os.path.basename(dataset))[0] for dataset in datasets]
@@ -125,14 +141,14 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
     """
     Loads the features and classifier with respect to the used modalities and perspectives and filters for the
     participant.
-    :param experiment_dir:
-    :param classifier_name:
-    :param modalities:
-    :param datasets:
-    :param participant_id:
-    :param session:
-    :param sequence_model:
-    :param label_issue_file:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param classifier_name: classifier name
+    :param modalities: modalities
+    :param datasets: datasets
+    :param participant_id: participant id
+    :param session: session
+    :param sequence_model: is sequence model
+    :param label_issue_file: label issue file (generated in test annotaion)
     :return:
     """
     dataset_files = [os.path.join("./dataset", dataset) for dataset in datasets]
@@ -169,13 +185,13 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
                label_issue_file: Union[Path, str] = None):
     """
     Predicts probabilities for classes with respect to time.
-    :param experiment_dir:
-    :param modalities:
-    :param classifier_name:
-    :param participant_id:
-    :param persepctives:
-    :param session:
-    :param label_issue_file:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param modalities: modalities
+    :param classifier_name: classifier name
+    :param participant_id: participant id
+    :param session: session
+    :param target_names: target names (prediction to label)
+    :param label_issue_file: label issue file (generated in test annotaion)
     :return:
     """
     sequence_model = True if classifier_name in SEQUENTIAL_CLASSIFIERS else False
@@ -231,11 +247,11 @@ def create_cv_predictions(experiment_dir: Union[str, Path], datasets: List[str],
                           classifier_name: str, label_issue_file: Union[Path, str] = None):
     """
     Creates cross validation predictions for all models in one run.
-    :param experiment_dir:
-    :param datasets:
-    :param modalities:
-    :param classifier_name:
-    :param label_issue_file:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param datasets: datasets
+    :param modalities: modalities
+    :param classifier_name: classifier name
+    :param label_issue_file: label issue file (generated in test annotaion)
     :return:
     """
     if isinstance(experiment_dir, str):
@@ -262,12 +278,12 @@ def create_cv_voting_predictions(experiment_dir: Union[str, Path], dataset_persp
                                  modalities: List[str], classifier_name: str,
                                  label_issue_file: Union[Path, str] = None):
     """
-    Creates soft coting classifier predictions from cross validation prediction of multiple models (one model per camera)
-    :param experiment_dir:
-    :param dataset_perspectives:
-    :param modalities:
-    :param classifier_name:
-    :param label_issue_file:
+    Creates soft voting classifier predictions from cross validation prediction of multiple models (one model per camera)
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param dataset_perspectives: datasets based on camera perspectives
+    :param modalities: modalities
+    :param classifier_name: classifier name
+    :param label_issue_file: label issue file (generated in test annotaion)
     :return:
     """
     if isinstance(experiment_dir, str):
@@ -302,11 +318,11 @@ def create_cv_voting_results(experiment_dir: Union[str, Path], dataset_perspecti
                              classifier_name: str, label_issue_file: Union[Path, str] = None):
     """
     Creates result csv (metrics and confusion matrices) from soft voting classifier predictions.
-    :param experiment_dir:
-    :param dataset_perspectives:
-    :param modalities:
-    :param classifier_name:
-    :param label_issue_file:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param dataset_perspectives: datasets based on camera perspectives
+    :param modalities: modalities
+    :param classifier_name: classifier name
+    :param label_issue_file: label issue file (generated in test annotaion)
     :return:
     """
     if isinstance(experiment_dir, str):
@@ -346,10 +362,10 @@ def create_cv_voting_results(experiment_dir: Union[str, Path], dataset_perspecti
 def get_video(data_dir: Union[str, Path], participant_id: int, perspective: str, date_time: str):
     """
     Gets video from given perspective for participant and session.
-    :param data_dir:
-    :param participant_id:
-    :param perspective:
-    :param session:
+    :param data_dir: top level directory of processed video files (videos used for annotation)
+    :param participant_id: articipant id
+    :param perspective: camera perspective
+    :param session: session
     :return:
     """
     if isinstance(data_dir, str):
@@ -376,14 +392,14 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
                               participant_ids: List[int], datasets: List[str], sessions: Optional[List[int]] = None):
     """
     Generates video with probabilities for classes as running plot.
-    :param experiment_dir:
-    :param data_dir:
-    :param output_dir:
-    :param modalities:
-    :param classifier_name:
-    :param participant_ids:
-    :param datasets:
-    :param sessions:
+    :param experiment_dir: top level directory of experiment (defined in config file)
+    :param data_dir: top level directory of processed video files (videos used for annotation)
+    :param output_dir: directory to save output video
+    :param modalities: modalities
+    :param classifier_name: classifier name
+    :param participant_ids: participant ids
+    :param datasets: datasets
+    :param sessions: sessions
     :return:
     """
     if isinstance(output_dir, str):
@@ -476,6 +492,100 @@ def generate_prediction_video(experiment_dir: Union[str, Path], data_dir: Union[
             output_video_file.unlink(missing_ok=True)
 
 
+def plot_error_dist(classification_df: pd.DataFrame, experiment_dir: Union[Path, str], modalities_id: str, dataset_voting_id: str):
+    """
+    Generates a histogram like bar plots of the distribution of the segment lengths of false predictions with total
+    number and total duration as y-axis.
+    :param classification_df: classification dataframe
+    :param experiment_dir: top level directory of processed video files (videos used for annotation)
+    :param modalities_id: modalities id
+    :param dataset_voting_id: dataset votib id
+    :return:
+    """
+    if isinstance(experiment_dir, str):
+        experiment_dir = Path(experiment_dir)
+    session_num_change = classification_df["session_num"].shift() != classification_df["session_num"]
+    classification_df["session_num_running"] = session_num_change.cumsum()
+    classification_df["false_prediction"] = classification_df["predictions"] != classification_df["labels"]
+    classification_df["confident"] = ~classification_df["scores_1"].between(3/10, 7/10)
+    classification_df["false_prediction_groups"] = classification_df[["false_prediction", "participant", "session_num_running"]].diff().cumsum().fillna(0).sum(axis=1)
+    false_prediction_df = classification_df.loc[classification_df["false_prediction"]]
+    false_prediction_groups = false_prediction_df.groupby(["false_prediction_groups"])
+    false_prediction_groups_size = false_prediction_groups.size().sort_values(ascending=False)
+
+    classification_df["false_prediction_proba_groups"] = classification_df[
+        ["false_prediction", "confident", "participant", "session_num_running"]].diff().cumsum().fillna(0).sum(axis=1)
+    false_prediction_confident_df = classification_df.loc[classification_df["false_prediction"] & classification_df["confident"]]
+    false_prediction_proba_groups = false_prediction_confident_df.groupby(["false_prediction_proba_groups"])
+    false_prediction_proba_groups_size = false_prediction_proba_groups.size().sort_values(ascending=False)
+
+    logdir = experiment_dir.joinpath("plots")
+    logdir.mkdir(parents=True, exist_ok=True)
+    uniques_pred, counts_pred = np.unique(false_prediction_groups_size.values, return_counts=True)
+    uniques_proba, counts_proba = np.unique(false_prediction_proba_groups_size.values, return_counts=True)
+    uniques = np.unique(np.concatenate((uniques_pred, uniques_proba), 0))
+    bar_width = .4
+    fig, ax = plt.subplots(1, 2, figsize=(60, 20))
+
+    ax[0].bar(uniques_pred, counts_pred, width=bar_width, label="False Predictions")
+    ax[0].bar(uniques_proba + bar_width, counts_proba, width=bar_width, label="False Predictions Confidence > 70%")
+    ax[0].set_xticks(uniques + bar_width / 2)
+    ax[0].set_xticklabels(uniques)
+    ax[0].set_xlim(xmin=0, xmax=max(uniques) + 1)
+    ax[0].legend()
+    # ax[0].set_yscale("log")
+
+    n_max_len = 3
+    unique_len = np.unique(false_prediction_groups_size[:n_max_len])
+    segment_txts_pred = {ul: [] for ul in unique_len[:-3]}
+    segment_txts_proba = {ul: [] for ul in unique_len[:-3]}
+    for i in range(n_max_len):
+        for segment_txts, groups_size, groups_col in zip([segment_txts_pred, segment_txts_proba], [false_prediction_groups_size, false_prediction_proba_groups_size], ["false_prediction_groups", "false_prediction_proba_groups"]):
+            max_len_i_group = classification_df.loc[classification_df[groups_col] == groups_size.index[i]]
+            participant = max_len_i_group["participant"].values[0]
+            session_num = max_len_i_group["session_num"].values[0]
+            ts_start = max_len_i_group["timestamp"].values[0]
+            ts_end = max_len_i_group["timestamp"].values[-1]
+            segment_txts[len(max_len_i_group)] = f"P{participant} S{session_num} T{ts_start:.1f}-{ts_end:.1f}"
+
+    for bar in ax[0].patches:
+        bar_value = bar.get_height()
+        text = f"{bar_value:d}"
+        bar_x = bar.get_x()
+        text_x = bar_x + bar.get_width() / 2
+        text_y = bar.get_y() + bar_value
+        bar_color = bar.get_facecolor()
+        ax[0].text(text_x, text_y, text, ha="center", va="bottom", color=bar_color, size=12)
+        if int(bar_x) in segment_txts_pred.keys():
+            segment_txt = "\n".join(segment_txts_pred[bar_x])
+            text_y += bar_width
+            ax[0].text(text_x, text_y, segment_txt, ha="center", va="bottom", color=bar_color, size=12)
+        elif int(bar_x - bar_width) in segment_txts_proba.keys():
+            segment_txt = "\n".join(segment_txts_proba[bar_x])
+            text_y += bar_width
+            ax[0].text(text_x, text_y, segment_txt, ha="center", va="bottom", color=bar_color, size=12)
+
+    counts_pred *= uniques_pred
+    counts_proba *= uniques_proba
+
+    ax[1].bar(uniques_pred, counts_pred, width=bar_width, label="False Predictions")
+    ax[1].bar(uniques_proba + bar_width, counts_proba, width=bar_width, label="False Predictions Confidence > 70%")
+    ax[1].set_xticks(uniques + bar_width / 2)
+    ax[1].set_xticklabels(uniques)
+    ax[1].set_xlim(xmin=0, xmax=max(uniques) + 1)
+    ax[1].legend()
+    # ax[0].set_yscale("log")
+    for bar in ax[1].patches:
+        bar_value = bar.get_height()
+        text = f"{bar_value:d}"
+        text_x = bar.get_x() + bar.get_width() / 2
+        text_y = bar.get_y() + bar_value
+        bar_color = bar.get_facecolor()
+        ax[1].text(text_x, text_y, text, ha="center", va="bottom", color=bar_color, size=12)
+    plt.savefig(os.path.join(logdir, "_".join([modalities_id, dataset_voting_id]) + ".png"), bbox_inches="tight")
+    plt.savefig(os.path.join(logdir, "_".join([modalities_id, dataset_voting_id]) + ".svg"), bbox_inches="tight")
+
+
 class Args:
     experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues"
     data_dir = "/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten"
@@ -485,10 +595,10 @@ class Args:
     participant_ids = [1, 11, 19]
     sessions = None
     classifier_name = "xgboost"
-    label_issue_file = None #  "exclude_op_of_sucess_ros_scalable_video_game_voting_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
+    label_issue_file = "exclude_op_of_sucess_ros_scalable_video_game_voting_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # parser.add_argument("-ed", "--experiment_dir", type=str,
     #                     default="/home/rfh/Repos/migrave_models/engagement_estimation/logs/clean_lab_exclude_issues",
@@ -508,10 +618,19 @@ if __name__ == '__main__':
         if not Path(parsed_dir).is_dir():
             print(f"Parsed directory {parsed_dir} does not exist.")
             sys.exit(0)
-    create_cv_voting_results(experiment_dir=args.experiment_dir, dataset_perspectives=args.datasets,
-                             modalities=args.modalities, classifier_name=args.classifier_name, label_issue_file=args.label_issue_file)
-    # generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
-    #                           modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
-    #                           sessions=args.sessions, classifier_name=args.classifier_name)
 
-    # get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)
+    classification_vote_df, modalities_id, dataset_voting_id = create_cv_voting_predictions(
+        experiment_dir=args.experiment_dir, dataset_perspectives=args.datasets,
+        modalities=args.modalities, classifier_name=args.classifier_name, label_issue_file=args.label_issue_file)
+    plot_error_dist(classification_df=classification_vote_df, experiment_dir=args.experiment_dir,
+                    modalities_id=modalities_id, dataset_voting_id=dataset_voting_id)
+
+    create_cv_voting_results(experiment_dir=args.experiment_dir, dataset_perspectives=args.datasets,
+                             modalities=args.modalities, classifier_name=args.classifier_name,
+                             label_issue_file=args.label_issue_file)
+
+    generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
+                              modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
+                              sessions=args.sessions, classifier_name=args.classifier_name)
+
+    get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)

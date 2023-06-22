@@ -226,6 +226,9 @@ def train_and_evaluate(config_path: str, logdir: str = "./logs") -> str:
     exclude_samples_regex = config["exclude_samples_regex"]
     dataset_files = [os.path.join("dataset", dataset) for dataset in datasets]
 
+    if minority_weight_factor is None:
+        minority_weight_factor = 1
+
     df_data, dataset_stems = utils.merge_datasets(dataset_files, modalities, exclude_feature_regex, exclude_samples_regex, label_issue_file)
 
     dataset_logdir = os.path.join(logdir, experiment_name,

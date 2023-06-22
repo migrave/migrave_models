@@ -469,10 +469,25 @@ def get_results(logdir, model_type, metrics):
     return results
 
 
-def plot_from_log(logdir, model_type="generalized", metrics=["Recall_0", "Precision_0"]):
+def plot_from_log(logdir, model_type="generalized", metrics=["AUPRC_0", "AUPRC_1"], exclude_classifiers=["catboost"], cmap_idx=0):
     results = get_results(logdir, model_type, metrics)
-    plot_results(results=results, cmap_idx=0, name=model_type, imdir=os.path.join(logdir, "images"))
+    for classifier in exclude_classifiers:
+        for metric, scores in results.items():
+            scores.pop(classifier, None)
+    plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
 
+
+def plot_balanced_acc_from_log(logdir, model_type="generalized", exclude_classifiers=["catboost"], cmap_idx=0):
+    metrics = ["Recall_1", "Recall_0"]
+    results = get_results(logdir, model_type, metrics)
+    for classifier in exclude_classifiers:
+        for metric, scores in results.items():
+            scores.pop(classifier, None)
+    results = {"Balanced_Accuracy": {classifier: (results["Recall_1"][classifier] + results["Recall_0"][classifier]) / 2 for classifier in results[metrics[0]].keys()}}
+    plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
+
+plot_balanced_acc_from_log(logdir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues/video_game/features_video_color", cmap_idx=2)
+plot_from_log(logdir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues/video_game/features_video_color", cmap_idx=2)
 
 def plot_summary(logdirs: List[str], out_dir, model_type="generalized",
                  metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
