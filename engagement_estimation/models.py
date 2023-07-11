@@ -1,6 +1,7 @@
 from typing import Union
 
 import numpy as np
+from sklearn import metrics
 from sklearn import neighbors
 from sklearn.model_selection import train_test_split
 import sklearn.ensemble as ensemble
