@@ -486,9 +486,6 @@ def plot_balanced_acc_from_log(logdir, model_type="generalized", exclude_classif
     plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
 
 
-plot_from_log(logdir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated/video_game/features_video_right", cmap_idx=0)
-
-
 def plot_summary(logdirs: List[str], out_dir, model_type="generalized",
                  metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
     logdirs = [Path(logdir) for logdir in logdirs]
