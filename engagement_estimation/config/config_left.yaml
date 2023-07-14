@@ -18,7 +18,7 @@ modalities:
 datasets:
     - features_video_left.csv
 minority_weight_factor: 1
-label_issue_file: /home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_calibrated/video_game/voting_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv
+label_issue_file:
 exclude_feature_regex: ^op.*|^of_ts_success.*|^ros_skill.*|^ros_mistakes.*|ros_games_session|ros_ts_game_start|^ros_diff.*|ros_aptitude.*|^of_success_.*
 exclude_samples_regex: ^of_success_features.*
 experiment_name: experiment_name
