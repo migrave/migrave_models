@@ -351,7 +351,6 @@ def merge_datasets(dataset_files, modalities, exclude_feature_regex=None, exclud
 
 def remove_label_issues(label_issue_file: str, dataset_df: pd.DataFrame):
     # remove label issues from datasets
-    label_issue_file = os.path.join("dataset", label_issue_file)
     label_issue_df = pd.read_csv(label_issue_file, index_col=0)
     label_issue_df = label_issue_df.loc[label_issue_df["label_issues"] == True]
     data_cols = dataset_df.columns
@@ -485,6 +484,9 @@ def plot_balanced_acc_from_log(logdir, model_type="generalized", exclude_classif
             scores.pop(classifier, None)
     results = {"Balanced_Accuracy": {classifier: (results["Recall_1"][classifier] + results["Recall_0"][classifier]) / 2 for classifier in results[metrics[0]].keys()}}
     plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
+
+
+plot_from_log(logdir="/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated/video_game/features_video_right", cmap_idx=0)
 
 
 def plot_summary(logdirs: List[str], out_dir, model_type="generalized",

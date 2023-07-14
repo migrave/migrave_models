@@ -25,7 +25,7 @@ def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], m
     classification_dfs["label_issues"] = label_issues
     classification_dfs["label_quality"] = label_quality
     experiment_name = experiment_dir.name
-    classification_dfs.to_csv(f"./dataset/{experiment_name}_{modalities_id}_{dataset_id}_{classifier_name}_cross_validation_issues.csv")
+    classification_dfs.to_csv(experiment_dir / modalities_id / f"{dataset_id}_{classifier_name}_cross_validation_issues.csv")
     print(f"{label_issues.sum() / len(label_issues) * 100:.2f}% of all labels have issues.")
 
 
@@ -33,7 +33,7 @@ class Args:
     experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable/"
     modalities = ["video", "game"]
     datasets = ["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"]
-    classifier_name = "xgboost"
+    classifier_name = "-xgboost"
     voting = 1
 
 

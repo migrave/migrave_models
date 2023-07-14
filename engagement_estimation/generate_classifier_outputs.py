@@ -29,6 +29,7 @@ matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 import argparse
 from functools import reduce
+import re
 
 from train_and_eval_models import ALLOWED_MODALITIES
 from utils import merge_datasets, normalize_data, create_result, extend_generalized_result, NON_FEATURES_COLS, ALLOWED_DATASETS, KERAS_CLASSIFIERS, SEQUENTIAL_CLASSIFIERS
@@ -499,7 +500,7 @@ def plot_error_dist(classification_df: pd.DataFrame, experiment_dir: Union[Path,
     :param classification_df: classification dataframe
     :param experiment_dir: top level directory of processed video files (videos used for annotation)
     :param modalities_id: modalities id
-    :param dataset_voting_id: dataset votib id
+    :param dataset_voting_id: dataset voting id
     :return:
     """
     if isinstance(experiment_dir, str):
@@ -536,34 +537,40 @@ def plot_error_dist(classification_df: pd.DataFrame, experiment_dir: Union[Path,
     # ax[0].set_yscale("log")
 
     n_max_len = 3
-    unique_len = np.unique(false_prediction_groups_size[:n_max_len])
-    segment_txts_pred = {ul: [] for ul in unique_len[:-3]}
-    segment_txts_proba = {ul: [] for ul in unique_len[:-3]}
-    for i in range(n_max_len):
-        for segment_txts, groups_size, groups_col in zip([segment_txts_pred, segment_txts_proba], [false_prediction_groups_size, false_prediction_proba_groups_size], ["false_prediction_groups", "false_prediction_proba_groups"]):
+    unique_len_pred = np.unique(false_prediction_groups_size)
+    unique_len_proba = np.unique(false_prediction_proba_groups_size)
+    segment_txts_pred = {ul: [] for ul in unique_len_pred[-n_max_len:]}
+    segment_txts_proba = {ul: [] for ul in unique_len_proba[-n_max_len:]}
+    last_instance_pred = false_prediction_groups_size.index.get_loc(false_prediction_groups_size[false_prediction_groups_size == unique_len_pred[-n_max_len]].index[-1])
+    last_instance_proba = false_prediction_proba_groups_size.index.get_loc(false_prediction_proba_groups_size[false_prediction_proba_groups_size == unique_len_proba[-n_max_len]].index[-1])
+    for segment_txts, groups_size, groups_col, n_instance in zip([segment_txts_pred, segment_txts_proba], [false_prediction_groups_size, false_prediction_proba_groups_size], ["false_prediction_groups", "false_prediction_proba_groups"], [last_instance_pred, last_instance_proba]):
+        for i in range(n_instance + 1):
             max_len_i_group = classification_df.loc[classification_df[groups_col] == groups_size.index[i]]
             participant = max_len_i_group["participant"].values[0]
             session_num = max_len_i_group["session_num"].values[0]
             ts_start = max_len_i_group["timestamp"].values[0]
             ts_end = max_len_i_group["timestamp"].values[-1]
-            segment_txts[len(max_len_i_group)] = f"P{participant} S{session_num} T{ts_start:.1f}-{ts_end:.1f}"
+            segment_txts[len(max_len_i_group)].append(f"P{participant} S{session_num} T{ts_start:.1f}-{ts_end:.1f}")
 
     for bar in ax[0].patches:
         bar_value = bar.get_height()
         text = f"{bar_value:d}"
         bar_x = bar.get_x()
         text_x = bar_x + bar.get_width() / 2
-        text_y = bar.get_y() + bar_value
+        text_y = bar_value
         bar_color = bar.get_facecolor()
         ax[0].text(text_x, text_y, text, ha="center", va="bottom", color=bar_color, size=12)
-        if int(bar_x) in segment_txts_pred.keys():
-            segment_txt = "\n".join(segment_txts_pred[bar_x])
-            text_y += bar_width
-            ax[0].text(text_x, text_y, segment_txt, ha="center", va="bottom", color=bar_color, size=12)
-        elif int(bar_x - bar_width) in segment_txts_proba.keys():
-            segment_txt = "\n".join(segment_txts_proba[bar_x])
-            text_y += bar_width
-            ax[0].text(text_x, text_y, segment_txt, ha="center", va="bottom", color=bar_color, size=12)
+        tick_x = round(bar_x)
+        if bar_x < tick_x:
+            if tick_x in segment_txts_pred.keys():
+                segment_txt = "\n".join(segment_txts_pred[tick_x])
+                text_x += bar.get_width() / 2
+                ax[0].text(text_x, text_y, segment_txt, ha="left", va="bottom", color=bar_color, size=8, rotation=60)
+        else:
+            if tick_x in segment_txts_proba.keys():
+                segment_txt = "\n".join(segment_txts_proba[tick_x])
+                text_x += bar.get_width() / 2
+                ax[0].text(text_x, text_y, segment_txt, ha="left", va="bottom", color=bar_color, size=8, rotation=60)
 
     counts_pred *= uniques_pred
     counts_proba *= uniques_proba
@@ -586,8 +593,43 @@ def plot_error_dist(classification_df: pd.DataFrame, experiment_dir: Union[Path,
     plt.savefig(os.path.join(logdir, "_".join([modalities_id, dataset_voting_id]) + ".svg"), bbox_inches="tight")
 
 
+def get_result_stats(results_file: Union[Path, str]):
+    """
+    Generates means of the cross validated results of a results file e.g. for the XGBoost model of one experiment.
+    Generates the chance scores of the metrics to compare to the models scores.
+    :param results_file: results file of one model in one experiment
+    :return:
+    """
+    results_df = pd.read_csv(results_file, index_col=0)
+    results_df["Balanced_Accuracy"] = (results_df["Recall_1"] + results_df["Recall_0"]) / 2
+    accuracy_mean = results_df["Accuracy"].mean()
+    balanced_accuracy_mean = results_df["Balanced_Accuracy"].mean()
+    auroc_mean = results_df["AUROC_0"].mean()
+    auprc_0_mean = results_df["AUPRC_0"].mean()
+    auprc_1_mean = results_df["AUPRC_1"].mean()
+    recall_0_mean = results_df["Recall_0"].mean()
+    recall_1_mean = results_df["Recall_1"].mean()
+    precision_0_mean = results_df["Precision_0"].mean()
+    precision_1_mean = results_df["Precision_1"].mean()
+    f1_0_mean = results_df["F1_0"].mean()
+    f1_1_mean = results_df["F1_1"].mean()
+
+    results_df["AUPRC_0_chance"] = results_df.apply(lambda row: row.Train_0 / (row.Train_0 + row.Train_1), axis=1)
+    results_df["AUPRC_1_chance"] = results_df.apply(lambda row: row.Train_1 / (row.Train_0 + row.Train_1), axis=1)
+    auprc_0_precision_0_chance_mean = results_df["AUPRC_0_chance"].mean()
+    auprc_1_precision_1_chance_mean = results_df["AUPRC_1_chance"].mean()
+    f1_0_chance_mean = 2 * auprc_0_precision_0_chance_mean * 0.5 / (auprc_0_precision_0_chance_mean + 0.5)
+    f1_1_chance_mean = 2 * auprc_1_precision_1_chance_mean * 0.5 / (auprc_1_precision_1_chance_mean + 0.5)
+
+    confusion_l = []
+    for confusion in results_df["C_ij(i=label,j=prediction)"]:
+        confusion_l.append(re.findall(r"\d+", confusion))
+    confusion_l = np.array(confusion_l, dtype=int)
+    confusion_sum = confusion_l.sum(axis=0)
+
+
 class Args:
-    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues"
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated"
     data_dir = "/media/veracrypt1/MigrAVEProcessed/MigrAVEDaten"
     output_dir = "/media/veracrypt1/MigrAVEProcessed"
     modalities = ["video", "game"]
