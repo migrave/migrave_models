@@ -637,7 +637,7 @@ class Args:
     participant_ids = [1, 11, 19]
     sessions = None
     classifier_name = "xgboost"
-    label_issue_file = "exclude_op_of_sucess_ros_scalable_video_game_voting_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
+    label_issue_file = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_calibrated/video_game/merged_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
 
 
 if __name__ == "__main__":

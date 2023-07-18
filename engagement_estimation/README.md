@@ -1,7 +1,7 @@
 # migrave_models
 
 __Author__: Alex Mitrevski, Mohammad Wasil, Julian Schanowski\*
-__Last update__: 19.06.2023
+__Last update__: 13.07.2023
 __Initial release__: 19.06.2023
 __License__: Copyright© 2023, Rheinische Fachhochschule gGmbH (RFH) - all rights reserved; see LICENSE 
 
@@ -73,7 +73,9 @@ Annotation guidelines can be found on the server under
 A multimodal dataset is recorded which includes three RGB cameras, one depth camera, two microphones and the game
 performance of the participants. For more details on the raw data see Jain at al. and the
 [MigrAVE_Preprocessing](https://github.com/RFH-MMI/MigrAVE_Preprocessing) pipeline. The features extracted by the
-pipeline can be found on the server under [AP3.1.4 Modell-Training](https://cloud.rfh-koeln.de/index.php/f/76778076).
+pipeline can be found on the server under [AP3.1.4 Modell-Training](https://cloud.rfh-koeln.de/index.php/f/76778076). A
+full backup of the features including the intermediate steps can be found on the harddrive ("MigrAVE 3 2022") under
+``../MigrAVEFeatures/13_07_2023/``.
 
 
 ## Classifier
@@ -121,7 +123,7 @@ conda env create -f requirements.yml
 ### training a new model
 1. Place the feature sets `features_video_color.csv`, `features_video_right.csv` and
 `features_video_left.csv` in `../migrave_models/engagement_estimation/dataset/`. The feature sets a stored on the 
-harddrive (see [Data specs](#data-specs)).
+server (see [Data specs](#data-specs)).
 2. Create one or more config files and place them in ``./migrave_models/engagement_estimation/config/``. Each file is
 used for one experiment. All experiments will run sequentially. A config file should have this format:
 ```yaml
@@ -151,7 +153,7 @@ datasets:
     - features_video_right.csv
     - features_video_left.csv
 minority_weight_factor: 1
-label_issue_file: label_issue_file.csv
+label_issue_file: /full/path/to/label_issue_file.csv
 exclude_feature_regex: ^op.*|^of_ts_success.*|^ros_skill.*|^ros_mistakes.*|ros_games_session|ros_ts_game_start|^ros_diff.*|ros_aptitude.*|^of_success_.*
 exclude_samples_regex: ^of_success_features.*
 experiment_name: experiment_name
@@ -217,12 +219,14 @@ deal with this issue we used [cleanlab](https://github.com/cleanlab/cleanlab) to
 uses the annotation and the predictions (probabilities) of a classifier to calculate a label quality score. Thus, you
 need to run an experiment first and use the classifiers from this experiment to create label issue file. Finally, you
 can include this file in a config file and run a new experiment with the annotation issues being excluded. For now this
-only works for generalized model types. To create the label issue file run the ``test_annotation.py`` script:
+only works for generalized model types.
+
+To create the label issue file run the ``test_annotation.py`` script with the ``create`` option:
 
 ````bash
 cd ../migrave_models/engagement_estimation
 conda activate migrave_models
-python test_annotation.py --experiment_dir ../migrave_modles/engagement_estimation/logs/experiment_name
+python test_annotation.py create --experiment_dir ../migrave_modles/engagement_estimation/logs/experiment_name
 --modalities video audio game --datasets features_video_right.csv features_video_left.csv features_video_color.csv
 --classifier_name xgboost --voting 1
 ````
@@ -234,7 +238,20 @@ In regular mode the datasets will be interpreted as a list of datasets used in a
 expects that an experiment with all those datasets in one config file has been run before. In soft-voting mode the
 datasets are interpreted as separate classifiers. Thus, the scripts expects that for the parsed experiment directory,
 modalities and classifier name separate config files with single datasets for each dataset in the list has been run
-before. The label issue file will be stored under ``../migrave_models/engagement_estimation/datasets/``.
+before. The label issue file will be stored in the experiment directory parsed.
+
+To merge multiple label issue files (with an AND operator) use the ``merge`` option. This option is useful to create an
+intersection of issues when testing a soft voting classifier based on classifiers with independent label issues:
+
+````bash
+cd ../migrave_models/engagement_estimation
+conda activate migrave_models
+python test_annotation.py merge --label_issues ../features_video_color_xgboost_cross_validation_issues.csv ../features_video_left_xgboost_cross_validation_issues.csv ../features_video_right_xgboost_cross_validation_issues.csv
+--out_dir ../out_dir
+````
+
+The ``--label_issues``, ``-li`` argument are the label issue files to be merged and the ``--out_dir``, ``-o`` is the
+directory to save the merged file to.
 
 ### tune parameters
 By default, the hyperparameters by Jain et al. have been used on all models. To further increase the classification
@@ -261,6 +278,8 @@ models.
 multiple perspectives fused with a soft-voting approach.
 * `create_cv_voting_results()`: Creates the same evaluation results as used in the training pipeline but for classifiers
 from multiple perspectives fused with a soft-voting approach and stores them as a CSV file.
+* `get_result_stats()`: Generates means of metric of one results file (e.g. cross validated XGBoost model in one
+experiment) *NO OUTPUT YET*
 * `plot_error_dist()`: Generates a histogram like bar plots of the distribution of the segment lengths of false
 predictions with total number and total duration as y-axis.
 ![error_dist](./assets/video_game_voting_features_video_left_features_video_right_features_video_color.svg)
@@ -279,35 +298,50 @@ low. Thus, can be excluded to save computational resources.
 * In real world scenarios single cameras might not work. In that case the whole classifier would fail. Three separate
 classifiers, one for each camera and fused with a soft-voting classifier would be more robust.
 
+The classifiers have been tested with different label issue files (see [test annotation](test annotation)). In the first
+round three classifiers, one per perspective, were trained on all samples then:
+
+1. the classifiers were used as a soft voting classifier and one label issue file was created on those results. In a
+second round three classifiers were trained again ignoring the samples with label issues. Finally, the classifiers of
+the second round were evaluated as soft voting classifiers using the same label issue file as before.
+2. the classifiers were used separately to create one label issue file for each perspective. In a second round three
+classifiers werde trained again using their corresponding label issue file. Finally, the classifiers of the second round
+were evaluated as soft voting classifier removing the intersection of the issues of all three label issue files (AND).
+
+The second approach proved to be the most suitable for the experimental setup, so these classifiers were further used.
+
 In the final system soft-voting classifier with a reduced feature set (see list above) is used. The performance is
-slightly reduced compared to single classifier. All results and classifiers can be found on the harddrive
-("MigrAVE 3 2022") under ``../MigrAVEModels/01_06_2023/migrave_models/engagement_estimation/logs``. The three
+slightly reduced compared to single classifier. All results, label issue files and classifiers can be found on the
+harddrive ("MigrAVE 3 2022") under ``../MigrAVEModels/13_07_2023/migrave_models/engagement_estimation/logs``. The three
 classifiers used in the system and their results can be found on the server under
 [AP3.1.4 Modell-Training](https://cloud.rfh-koeln.de/index.php/f/76778077). The performance of the soft-voting
-classifier is described below (all scores are means of the leave-one-out cross validation), rounding errors apply.
+classifier is described below (all scores are means of the leave-one-out cross validation), rounding errors apply. Also
+keep in mind, that the soft voting results ar not directly comparable to the separate classifiers, as the classifiers
+were tested with respect to the perspectives label issues and the soft voting classifier with respect to their
+intersection.
 
 
 | Metric            | Score | Chance |
 |-------------------|-------|--------|
-| AUPRC_0           | 0.617 | 0.136  |
-| AUPRC_1           | 0.970 | 0.863  |
-| Recall_0          | 0.677 | 0.5    |
-| Recall_1          | 0.919 | 0.5    |
-| Precision_0       | 0.559 | 0.136  |
-| Precision_1       | 0.946 | 0.863  |
-| F1_0              | 0.574 | 0.214  |
-| F1_1              | 0.931 | 0.633  |
-| AUROC             | 0.902 | 0.5    |
-| Accuracy          | 0.895 | 0.5    |
-| Balanced_Accuracy | 0.798 | 0.5    |
+| AUPRC_0           | 0.602 | 0.136  |
+| AUPRC_1           | 0.972 | 0.863  |
+| Recall_0          | 0.712 | 0.5    |
+| Recall_1          | 0.904 | 0.5    |
+| Precision_0       | 0.518 | 0.136  |
+| Precision_1       | 0.950 | 0.863  |
+| F1_0              | 0.568 | 0.214  |
+| F1_1              | 0.924 | 0.633  |
+| AUROC             | 0.904 | 0.5    |
+| Accuracy          | 0.886 | 0.5    |
+| Balanced_Accuracy | 0.808 | 0.5    |
 
 Confusion Matrix:  
 
 |      |            | predicted | predicted  |
 |------|------------|-----------|------------|
 |      |            | engaged   | disengaged |
-| true | engaged    | 75107     | 6247       |
-| true | disengaged | 3973      | 8934       |
+| true | engaged    | 80079     | 8127       |
+| true | disengaged | 3901      | 10075      |
 
 
 AUPRC scores for both classes in comparison between all tested classifiers for all three perspectives:
