@@ -100,7 +100,7 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
     model_name = f"generalized_{classifier_name}_model_tested_on_{participant_id}"
     model_files = [path for path in log_dir.iterdir() if path.is_file and path.stem == model_name]
     if len(model_files) == 0:
-        return None, None, None, None, None
+        return None, None, None, modalities_id, dataset_id
     if classifier_name in KERAS_CLASSIFIERS:
         for file in model_files:
             if file.suffix == ".joblib":
@@ -171,9 +171,9 @@ def load_data_and_classifier(experiment_dir: Union[str, Path], classifier_name: 
         dataset_stems=dataset_stems,
         classifier_name=classifier_name,
         participant_id=model_participant_id)
-    if classifier is None:
-        return None, None, None, None, None, None, None, None
     of_success = features.filter(regex="^of_success_features.*").values
+    if classifier is None:
+        return None, None, of_success, timestamps, date_time, classifier, modalities_id, dataset_id
     features = features[norm_max.keys()]
 
     features, _, _ = normalize_data(features, max=norm_max, min=norm_min)
@@ -213,7 +213,7 @@ def test_model(experiment_dir: Union[str, Path], modalities: List[str], classifi
         label_issue_file=label_issue_file,
         model_participant_id=model_participant_id)
     if classifier is None:
-        return None, None, None, None
+        return None, date_time, modalities_id, dataset_id
     if isinstance(classifier, keras.Sequential):
         scores_1 = classifier.predict(features)
         scores_1 = [score[0] for score in scores_1]
