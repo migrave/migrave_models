@@ -69,13 +69,13 @@ if __name__ == '__main__':
     merge_parser = subparser.add_parser("merge")
 
     create_parser.add_argument("-ed", "--experiment_dir", type=str, help="Path to the experiment directory")
-    create_parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
-    create_parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
-    create_parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
-    create_parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
+    create_parser.add_argument("-m", "--modalities", type=str, nargs="+", help="List of modalities")
+    create_parser.add_argument("-d", "--datasets", type=str, nargs="+", help="List of datasets")
+    create_parser.add_argument("-cn", "--classifier_name", type=str, help="Classifier name")
+    create_parser.add_argument("-v", "--voting", type=int, help="Use datasets for separate voting classifiers")
 
-    merge_parser.add_subparsers("-li", "--label_issues", required=True, type=str, nargs="+", help="List of label issue files")
-    merge_parser.add_subparsers("-o", "--out_dir", required=True, type=str, nargs="+", help="Output directory")
+    merge_parser.add_subparsers("-li", "--label_issues", type=str, nargs="+", help="List of label issue files")
+    merge_parser.add_subparsers("-o", "--out_dir", type=str, nargs="+", help="Output directory")
 
     args = parser.parse_args()
     # args = Args
