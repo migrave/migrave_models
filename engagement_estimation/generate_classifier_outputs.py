@@ -99,19 +99,15 @@ def load_generalized_classifier(experiment_dir: Union[str, Path], modalities: Li
         log_dir = modality_dir
     model_name = f"generalized_{classifier_name}_model_tested_on_{participant_id}"
     model_files = [path for path in log_dir.iterdir() if path.is_file and path.stem == model_name]
+    if len(model_files) == 0:
+        return None, None, None, None, None
     if classifier_name in KERAS_CLASSIFIERS:
         for file in model_files:
             if file.suffix == ".joblib":
-                if not file.is_file():
-                    return None, None, None, None, None
                 norm_max, norm_min = joblib.load(file)
             elif file.suffix == ".h5":
-                if not file.is_file():
-                    return None, None, None, None, None
                 classifier = keras.models.load_model(file)
     else:
-        if not model_files[0].is_file():
-            return None, None, None, None, None
         classifier, norm_max, norm_min = joblib.load(model_files[0])
 
     return classifier, norm_max, norm_min, modalities_id, dataset_id
