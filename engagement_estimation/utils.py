@@ -208,9 +208,13 @@ def normalize_data(data: pd.core.frame.DataFrame,
         # fill nan with min if column not in NAN_MAX_COLS, otherwise fill with max
         if not c.startswith(tuple(NAN_MAX_COLS)):
             min_val = np.nanmin(data_copy[c])
+            if np.isnan(min_val):
+                min_val = 0
             data_copy[c] = data_copy[c].fillna(min_val)
         else:
             max_val = np.nanmax(data_copy[c])
+            if np.isnan(max_val):
+                max_val = 1
             data_copy[c] = data_copy[c].fillna(max_val)
 
     return data_copy, data_max, data_min
