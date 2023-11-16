@@ -279,7 +279,7 @@ multiple perspectives fused with a soft-voting approach.
 * `create_cv_voting_results()`: Creates the same evaluation results as used in the training pipeline but for classifiers
 from multiple perspectives fused with a soft-voting approach and stores them as a CSV file.
 * `get_result_stats()`: Generates means of metric of one results file (e.g. cross validated XGBoost model in one
-experiment) *NO OUTPUT YET*
+experiment)
 * `plot_error_dist()`: Generates a histogram like bar plots of the distribution of the segment lengths of false
 predictions with total number and total duration as y-axis.
 ![error_dist](./assets/video_game_voting_features_video_left_features_video_right_features_video_color.svg)

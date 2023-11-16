@@ -352,7 +352,7 @@ def create_cv_voting_results(experiment_dir: Union[str, Path], dataset_perspecti
     if any(param is None for param in disable_cv):
         if not all(param is None for param in disable_cv):
             print(f"Not all parameters for disabling cross validation are set. Set all or none parameters. model_participant_id is set to {model_participant_id}, test_id is set to {test_id}.")
-        sys.exit(0)
+            sys.exit(0)
     classification_df, modalities_id, dataset_voting_id = create_cv_voting_predictions(experiment_dir=experiment_dir,
                                                                                        dataset_perspectives=dataset_perspectives,
                                                                                        modalities=modalities,
@@ -379,7 +379,7 @@ def create_cv_voting_results(experiment_dir: Union[str, Path], dataset_perspecti
         test_1 = test_counts[np.argmax(test_unique)]
         result = extend_generalized_result(result, participants, p, train_0, train_1, test_0, test_1)
         evaluation_results.append(result)
-    log_name = "voting_classifier_" + test_id if disable_cv else "voting_classifier"
+    log_name = "voting_classifier_" + test_id if test_id is not None else "voting_classifier"
     logdir = experiment_dir.joinpath(log_name)
     logdir.mkdir(parents=True, exist_ok=True)
     clf_result_pd = pd.DataFrame(columns=list(evaluation_results[0].keys()))
@@ -620,15 +620,7 @@ def plot_error_dist(classification_df: pd.DataFrame, experiment_dir: Union[Path,
     plt.savefig(os.path.join(logdir, "_".join([modalities_id, dataset_voting_id]) + ".svg"), bbox_inches="tight")
 
 
-def get_result_stats(results_file: Union[Path, str]):
-    """
-    Generates means of the cross validated results of a results file e.g. for the XGBoost model of one experiment.
-    Generates the chance scores of the metrics to compare to the models scores.
-    :param results_file: results file of one model in one experiment
-    :return:
-    """
-    results_df = pd.read_csv(results_file, index_col=0)
-    results_df["Balanced_Accuracy"] = (results_df["Recall_1"] + results_df["Recall_0"]) / 2
+def get_stats_df(results_df: pd.DataFrame):
     accuracy_mean = results_df["Accuracy"].mean()
     balanced_accuracy_mean = results_df["Balanced_Accuracy"].mean()
     auroc_mean = results_df["AUROC_0"].mean()
@@ -652,11 +644,51 @@ def get_result_stats(results_file: Union[Path, str]):
     for confusion in results_df["C_ij(i=label,j=prediction)"]:
         confusion_l.append(re.findall(r"\d+", confusion))
     confusion_l = np.array(confusion_l, dtype=int)
-    confusion_sum = confusion_l.sum(axis=0)
-    return
+    confusion_sum = confusion_l.sum(axis=0).reshape(2, 2)
+    confusion_chance = confusion_sum.sum(axis=1)
+    confusion_chance = np.concatenate([confusion_chance, confusion_chance]).reshape(2, 2).T / 2
+    metric = ["AUPRC_0", "AUPRC_1", "Recall_0", "Recall_1", "Precision_0", "Precision_1", "F1_0", "F1_1", "AUROC",
+              "Accuracy", "Balanced_Accuracy", "Confusion"]
+    score = [auprc_0_mean, auprc_1_mean, recall_0_mean, recall_1_mean, precision_0_mean, precision_1_mean, f1_0_mean,
+             f1_1_mean, auroc_mean, accuracy_mean, balanced_accuracy_mean, confusion_sum]
+    chance = [auprc_0_precision_0_chance_mean, auprc_1_precision_1_chance_mean, 0.5, 0.5,
+              auprc_0_precision_0_chance_mean, auprc_1_precision_1_chance_mean, f1_0_chance_mean, f1_1_chance_mean, 0.5,
+              0.5, 0.5, confusion_chance]
+    result_stats = pd.DataFrame({"metric": metric, "score": score, "chance": chance})
+    return result_stats
+
+
+def get_result_stats(results_file: Union[Path, str]):
+    """
+    Generates means of the cross validated results of a results file e.g. for the XGBoost model of one experiment.
+    Generates the chance scores of the metrics to compare to the models scores. Generates those results for data from
+    the learning survey and the field survey separately and all combined.
+    :param results_file: results file of one model in one experiment
+    :return:
+    """
+    if isinstance(results_file, str):
+        results_file = Path(results_file)
+    results_dfs = {}
+    stats_dfs = []
+    results_df = pd.read_csv(results_file, index_col=0)
+    results_df["Balanced_Accuracy"] = (results_df["Recall_1"] + results_df["Recall_0"]) / 2
+    participants = results_df["Test"]
+    if any([participant < 100 for participant in participants]) and any([participant >= 100 for participant in participants]):
+        results_dfs["_complete"] = results_df
+    results_dfs["_learn"] = results_df[results_df["Test"] < 100]
+    results_dfs["_field"] = results_df[results_df["Test"] >= 100]
+    for key, value in results_dfs.items():
+        if len(value) != 0:
+            stats_df = get_stats_df(value)
+            stats_df.columns = [str(col) + key if col != "metric" else col for col in stats_df.columns]
+            stats_df.set_index("metric", inplace=True)
+            stats_dfs.append(stats_df)
+    results_stats = pd.concat(stats_dfs, axis=1)
+    results_stats.to_csv(results_file.parent.joinpath(f"{results_file.stem}_stats.csv"))
+
 
 class Args:
-    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated"
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/fieldstudy_exclude_of_sucess_ros_scalable_label_issues_calibrated"
     data_dir = "/media/veracrypt1/Feldversuche/qtrobot/MigrAVEProcessed/MigrAVEDaten"
     output_dir = "/media/veracrypt1/Feldversuche/qtrobot/MigrAVEProcessed"
     modalities = ["video", "game"]
@@ -665,8 +697,8 @@ class Args:
     sessions = None
     classifier_name = "xgboost"
     label_issue_file = None # "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_calibrated/video_game/merged_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
-    model_participant_id = 24
-    test_id = "fieldstudy"
+    model_participant_id = None # 24
+    test_id = None # "fieldstudy"
 
 
 if __name__ == "__main__":
