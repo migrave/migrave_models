@@ -391,7 +391,7 @@ the (2) field study in example the amount of persons in the camera frame or the 
 This can be seen in some feature distributions, exemplary the confidence of the face detection in the
 [figure](of_confidence_dist) below where the overall detection of the face works significantly better in the learning
 data survey, especially for the upper webcam (`features_video_right`).
-![of_confidence_dist](./assets/of_confidence_distribution.svg)
+![of_confidence_dist](./assets/of_confidence_distribution.png)
 
 The three classifiers were trained again exactly as described in the [section](learning-data-survey) above this time
 using both datasets from the learning data survey and the field study combined. The classification quality is described
