@@ -26,6 +26,8 @@ __License__: Copyright© 2023, Rheinische Fachhochschule gGmbH (RFH) - all right
     - [generate outputs](#generate-outputs)
   - [Known bugs and shortcomings](#known-bugs-and-shortcomings)
   - [Performance](#performance)
+    - [Learning data survey](#learning-data-survey)
+    - [Field study](#field-study)
   - [Repo structure](#repo-structure)
   - [Visualizations](#visualizations)
 </details>
@@ -285,6 +287,12 @@ predictions with total number and total duration as y-axis.
 ![error_dist](./assets/video_game_voting_features_video_left_features_video_right_features_video_color.svg)
 
 ## Performance
+The complete data collected in the MigrAVE project is split into data from (1) the learning data survey and (2) the
+field study. First the data from (1) has been coolected and was used to train a initial classifier. Later this
+classifier was flashed on the robot and has been used for (2). In (2) more date from new partidipants was collected and
+was used to test the classifier from (1). Finally, the complete data from (1) and (2) was used to train a new classifier
+aiming to improve the overall classification quality.
+### Learning data survey
 Various combinations of modalities and perspectives were tested. The best overall performance was achieved with XGBoost
 classifier using all modalities and all perspectives in one classifier. However, this classifier is not used in the
 final system due to following reasons:
@@ -352,7 +360,75 @@ AUPRC scores for both classes in comparison between all tested classifiers for a
 | camera left  | ![error_dist](./assets/generalized_AUPRC_1_left.svg)  | ![error_dist](./assets/generalized_AUPRC_0_left.svg)  |
 | camera color | ![error_dist](./assets/generalized_AUPRC_1_color.svg) | ![error_dist](./assets/generalized_AUPRC_0_color.svg) |
 
+### Field study
+The new dataset from the field study has been tested on the soft voting classifier described above. However, the
+classification quality was significantly worse the cross-validated-results from the learning-data-survey.
 
+| Metric            | Score | Chance |
+|-------------------|-------|--------|
+| AUPRC_0           | 0.468 | 0.21   |
+| AUPRC_1           | 0.897 | 0.79   |
+| Recall_0          | 0.483 | 0.5    |
+| Recall_1          | 0.817 | 0.5    |
+| Precision_0       | 0.448 | 0.21   |
+| Precision_1       | 0.855 | 0.79   |
+| F1_0              | 0.419 | 0.296  |
+| F1_1              | 0.829 | 0.612  |
+| AUROC             | 0.752 | 0.5    |
+| Accuracy          | 0.757 | 0.5    |
+| Balanced_Accuracy | 0.650 | 0.5    |
+
+Confusion Matrix:  
+
+|      |            | predicted | predicted  |
+|------|------------|-----------|------------|
+|      |            | engaged   | disengaged |
+| true | engaged    | 33647     | 7575       |
+| true | disengaged | 5507      | 5460       |
+
+The worse performance quality is most likely due to inhomogeneity between the data of the (1) learning data survey and
+the (2) field study in example the amount of persons in the camera frame or the setup of the robots/cameras position. 
+This can be seen in some feature distributions, exemplary the confidence of the face detection in the
+[figure](of_confidence_dist) below where the overall detection of the face works significantly better in the learning
+data survey, especially for the upper webcam (`features_video_right`).
+![of_confidence_dist](./assets/of_confidence_distribution.svg)
+
+The three classifiers were trained again exactly as described in the [section](learning-data-survey) above this time
+using both datasets from the learning data survey and the field study combined. The classification quality is described
+below (1) the data from the learning data survey (LDS) and (2) for the field study (FS) data separately and (3) for the
+full (FULL) dataset.
+
+| Metric            | Score | Chance | Score | Chance | Score | Chance |
+|-------------------|-------|--------|-------|--------|-------|--------|
+|                   | LDS   | LDS    | FS    | FS     | FULL  | FULL   |
+| AUPRC_0           | 0.61  | 0.165  | 0.531 | 0.163  | 0.579 | 0.164  |
+| AUPRC_1           | 0.973 | 0.835  | 0.906 | 0.837  | 0.947 | 0.836  |
+| Recall_0          | 0.672 | 0.5    | 0.682 | 0.5    | 0.676 | 0.5    |
+| Recall_1          | 0.916 | 0.5    | 0.728 | 0.5    | 0.841 | 0.5    |
+| Precision_0       | 0.552 | 0.165  | 0.432 | 0.163  | 0.504 | 0.164  |
+| Precision_1       | 0.949 | 0.835  | 0.876 | 0.837  | 0.92  | 0.836  |
+| F1_0              | 0.571 | 0.248  | 0.495 | 0.246  | 0.541 | 0.247  |
+| F1_1              | 0.93  | 0.625  | 0.784 | 0.626  | 0.872 | 0.626  |
+| AUROC             | 0.904 | 0.5    | 0.787 | 0.5    | 0.858 | 0.5    |
+| Accuracy          | 0.894 | 0.5    | 0.716 | 0.5    | 0.823 | 0.5    |
+| Balanced_Accuracy | 0.794 | 0.5    | 0.705 | 0.5    | 0.759 | 0.5    |
+
+Confusion Matrix:
+
+|      |            | predicted | predicted  | predicted | predicted  | predicted | predicted  |
+|------|------------|-----------|------------|-----------|------------|-----------|------------|
+|      |            | LDS       | LDS        | FS        | FS         | FULL      | FULL       |
+|      |            | engaged   | disengaged | engaged   | disengaged | engaged   | disengaged |
+| true | engaged    | 81200     | 7116       | 26295     | 9964       | 107495    | 17080      |
+| true | disengaged | 4101      | 9888       | 3663      | 6853       | 7764      | 16741      |
+
+AUPRC scores for both classes in comparison between all tested classifiers for all three perspectives:
+
+|              |                           engagement                            |                        disengagement                        |
+|--------------|:---------------------------------------------------------------:|:-----------------------------------------------------------:|
+| camera right |   ![error_dist](./assets/generalized_AUPRC_1_right_field.svg)   | ![error_dist](./assets/generalized_AUPRC_0_right_field.svg) |
+| camera left  |   ![error_dist](./assets/generalized_AUPRC_1_left_field.svg)    | ![error_dist](./assets/generalized_AUPRC_0_left_field.svg)  |
+| camera color |   ![error_dist](./assets/generalized_AUPRC_1_color_field.svg)   | ![error_dist](./assets/generalized_AUPRC_0_color_field.svg) |
 ## Repo structure
 ````bash
 ../migrave_models

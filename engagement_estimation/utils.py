@@ -462,13 +462,14 @@ def get_results(logdir, model_type, metrics):
     results = {metric: {} for metric in metrics}
     for file in os.listdir(logdir):
         if file.endswith(".csv"):
-            file_name_chunks = os.path.splitext(os.path.basename(file))[0].split("_")
-            file_model_type = file_name_chunks[0]
-            if file_model_type == model_type:
-                file_model = "_".join(file_name_chunks[1:])
-                file_df = pd.read_csv(os.path.join(logdir, file))
-                for metric in results.keys():
-                    results[metric][file_model] = round(file_df[metric].mean() * 100, 2)
+            if not file.endswith("_stats.csv"):
+                file_name_chunks = os.path.splitext(os.path.basename(file))[0].split("_")
+                file_model_type = file_name_chunks[0]
+                if file_model_type == model_type:
+                    file_model = "_".join(file_name_chunks[1:])
+                    file_df = pd.read_csv(os.path.join(logdir, file))
+                    for metric in results.keys():
+                        results[metric][file_model] = round(file_df[metric].mean() * 100, 2)
     return results
 
 
