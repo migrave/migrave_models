@@ -68,7 +68,7 @@ if __name__ == '__main__':
     create_parser = subparser.add_parser("create")
     merge_parser = subparser.add_parser("merge")
 
-    create_parser.add_argument("-ed", "--experiment_dir", type=str, help="Path to the experiment directory")
+    create_parser.add_argument("-ed", "--experiment_dir", required=True, type=str, help="Path to the experiment directory")
     create_parser.add_argument("-m", "--modalities", required=True, type=str, nargs="+", help="List of modalities")
     create_parser.add_argument("-d", "--datasets", required=True, type=str, nargs="+", help="List of datasets")
     create_parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
@@ -80,16 +80,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # args = Args
     if args.command == "create":
-        for parsed_dir in [args.experiment_dir]:
-            if not Path(parsed_dir).is_dir():
-                print(f"Parsed directory {parsed_dir} does not exist.")
-                sys.exit(0)
+        if not Path(args.experiment_dir).is_dir():
+            print(f"Parsed directory {args.experiment_dir} does not exist.")
+            sys.exit(0)
         create_label_issues(experiment_dir=args.experiment_dir, datasets=args.datasets, modalities=args.modalities, classifier_name=args.classifier_name, voting=args.voting)
     elif args.command == "merge":
         if not Path(args.out_dir).is_dir():
             print(f"Parsed directory {args.out_dir} does not exist.")
             sys.exit(0)
-        for label_issue in [args.label_issues]:
+        for label_issue in args.label_issues:
             if not Path(label_issue).is_file():
                 print(f"Parsed file {label_issue} does not exist.")
                 sys.exit(0)
