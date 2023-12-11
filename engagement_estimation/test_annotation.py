@@ -92,7 +92,7 @@ if __name__ == '__main__':
             if not Path(label_issue).is_file():
                 print(f"Parsed file {label_issue} does not exist.")
                 sys.exit(0)
-        merge_label_issues(label_issue_files=args.label_issue, output_dir=args.out_dir)
+        merge_label_issues(label_issue_files=args.label_issues, output_dir=args.out_dir)
     else:
         print(f"Expected command to be create or merge but got {args.command} instead")
         sys.exit(0)
