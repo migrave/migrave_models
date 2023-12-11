@@ -6,6 +6,7 @@ import sys
 import argparse
 from functools import reduce
 import pandas as pd
+import numpy as np
 
 
 def create_label_issues(experiment_dir: Union[str, Path], datasets: List[str], modalities: List[str], classifier_name: str, voting: bool):
