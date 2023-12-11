@@ -75,7 +75,7 @@ if __name__ == '__main__':
     create_parser.add_argument("-v", "--voting", required=True, type=int, help="Use datasets for separate voting classifiers")
 
     merge_parser.add_argument("-li", "--label_issues", required=True, type=str, nargs="+", help="List of label issue files")
-    merge_parser.add_argument("-o", "--out_dir", required=True, type=str, nargs="+", help="Output directory")
+    merge_parser.add_argument("-o", "--out_dir", required=True, type=str, help="Output directory")
 
     args = parser.parse_args()
     # args = Args
@@ -93,6 +93,7 @@ if __name__ == '__main__':
             if not Path(label_issue).is_file():
                 print(f"Parsed file {label_issue} does not exist.")
                 sys.exit(0)
+        merge_label_issues(label_issue_files=args.labe_issues, output_dir=args.out_dir)
     else:
         print(f"Expected command to be create or merge but got {args.command} instead")
         sys.exit(0)
