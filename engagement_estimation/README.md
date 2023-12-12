@@ -77,7 +77,7 @@ performance of the participants. For more details on the raw data see Jain at al
 [MigrAVE_Preprocessing](https://github.com/RFH-MMI/MigrAVE_Preprocessing) pipeline. The features extracted by the
 pipeline can be found on the server under [AP3.1.4 Modell-Training](https://cloud.rfh-koeln.de/index.php/f/76778076). A
 full backup of the features including the intermediate steps can be found on the harddrive ("MigrAVE 3 2022") under
-``../MigrAVEFeatures/13_07_2023/``.
+``../Lerndatenerhebung/MigrAVEFeatures/13_07_2023/``.
 
 
 ## Classifier
@@ -228,7 +228,7 @@ To create the label issue file run the ``test_annotation.py`` script with the ``
 ````bash
 cd ../migrave_models/engagement_estimation
 conda activate migrave_models
-python test_annotation.py create --experiment_dir ../migrave_modles/engagement_estimation/logs/experiment_name
+python test_annotation.py create --experiment_dir ../migrave_models/engagement_estimation/logs/experiment_name
 --modalities video audio game --datasets features_video_right.csv features_video_left.csv features_video_color.csv
 --classifier_name xgboost --voting 1
 ````
@@ -288,8 +288,8 @@ predictions with total number and total duration as y-axis.
 
 ## Performance
 The complete data collected in the MigrAVE project is split into data from (1) the learning data survey and (2) the
-field study. First the data from (1) has been coolected and was used to train a initial classifier. Later this
-classifier was flashed on the robot and has been used for (2). In (2) more date from new partidipants was collected and
+field study. First the data from (1) has been collected and was used to train an initial classifier. Later this
+classifier was flashed on the robot and has been used for (2). In (2) more date from new participants was collected and
 was used to test the classifier from (1). Finally, the complete data from (1) and (2) was used to train a new classifier
 aiming to improve the overall classification quality.
 ### Learning data survey
@@ -320,7 +320,7 @@ The second approach proved to be the most suitable for the experimental setup, s
 
 In the final system soft-voting classifier with a reduced feature set (see list above) is used. The performance is
 slightly reduced compared to single classifier. All results, label issue files and classifiers can be found on the
-harddrive ("MigrAVE 3 2022") under ``../MigrAVEModels/13_07_2023/migrave_models/engagement_estimation/logs``. The three
+harddrive ("MigrAVE 3 2022") under ``../Lerndatenerhebung/MigrAVEModels/13_07_2023/migrave_models/engagement_estimation/logs``. The three
 classifiers used in the system and their results can be found on the server under
 [AP3.1.4 Modell-Training](https://cloud.rfh-koeln.de/index.php/f/76778077). The performance of the soft-voting
 classifier is described below (all scores are means of the leave-one-out cross validation), rounding errors apply. Also
@@ -429,6 +429,12 @@ AUPRC scores for both classes in comparison between all tested classifiers for a
 | camera right |   ![error_dist](./assets/generalized_AUPRC_1_right_field.svg)   | ![error_dist](./assets/generalized_AUPRC_0_right_field.svg) |
 | camera left  |   ![error_dist](./assets/generalized_AUPRC_1_left_field.svg)    | ![error_dist](./assets/generalized_AUPRC_0_left_field.svg)  |
 | camera color |   ![error_dist](./assets/generalized_AUPRC_1_color_field.svg)   | ![error_dist](./assets/generalized_AUPRC_0_color_field.svg) |
+
+The [annotation](https://cloud.rfh-koeln.de/f/95840150), [features](https://cloud.rfh-koeln.de/f/95840151) as well as
+the [results](https://cloud.rfh-koeln.de/f/95840708) of the field study evaluations and
+[final models and results](https://cloud.rfh-koeln.de/f/95840342) can be found on the server. In addition, all models,
+results and intermediate steps of the features can be found on the hard-drive under ``../Feldversuche/``.
+
 ## Repo structure
 ````bash
 ../migrave_models
