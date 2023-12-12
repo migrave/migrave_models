@@ -1,4 +1,6 @@
 from pathlib import Path
+
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import os
@@ -35,6 +37,10 @@ def export_fig(fig, fig_name, output_dir):
     fig.savefig(fig_dir, bbox_inches='tight')
 
 
+translation_dict = dict(features_video_right="obere Webcam", features_video_left="untere Webcam",
+                        features_video_color="Roboterkamera")
+
+
 def raincloud_target_features(study_0: Path, study_1: Path, output_dir: Path, feature_names):
     all_dfs = []
     for data_1 in study_1.iterdir():
@@ -43,8 +49,8 @@ def raincloud_target_features(study_0: Path, study_1: Path, output_dir: Path, fe
             data_0 = learnstudy.joinpath(data_1.name)
             df_1 = pd.read_csv(data_1, index_col=0)[feature_names]
             df_0 = pd.read_csv(data_0, index_col=0)[feature_names]
-            df_0["study"] = data_0.parent.parent.stem
-            df_1["study"] = data_1.parent.parent.stem
+            df_0["Datensatz"] = data_0.parent.parent.stem
+            df_1["Datensatz"] = data_1.parent.parent.stem
             df_0["camera"] = dataset
             df_1["camera"] = dataset
             all_dfs.append(df_0)
@@ -59,13 +65,15 @@ def raincloud_target_features(study_0: Path, study_1: Path, output_dir: Path, fe
     # pal = "Set2"
     pal = sns.color_palette([[v / 255 for v in c] for c in MIGRAVE_PALETTE])
     sigma = .2
-    dhue = "study"
+    dhue = "Datensatz"
 
     for feature_name in feature_names:
         dy = feature_name
         fig, ax = plt.subplots(figsize=(15, 10))
         ax = pt.RainCloud(x=dx, y=dy, hue=dhue, data=concat_df, palette=pal, bw=sigma, width_viol=.6, ax=ax, orient=ort,
                           move=.2, alpha=.65, dodge=True, box_medianprops={"zorder": 11})
+        ax.set_yticklabels(["obere Webcam", "untere Webcam", "Roboterkamera"])
+        ax.set_ylabel("")
         if not path.isdir(fig_dir):
             os.makedirs(fig_dir)
         plt.title("")
@@ -92,9 +100,9 @@ def raincloud_target_features(study_0: Path, study_1: Path, output_dir: Path, fe
 #         concat_df.to_csv(output_data)
 
 # plot distribution of single feature between both studies and for each camera
-fieldstudy = Path("/home/rfh/Documents/MigrAVE/Feldstudie/Learning_Data")
+fieldstudy = Path("/home/rfh/Documents/MigrAVE/Feldversuche/Learning_Data")
 learnstudy = Path("/home/rfh/Documents/MigrAVE/Lerndatenerhebung/Learning_Data")
 features = ["of_confidence", "of_success", "of_pose_distance", "op_person_n_col"]
-output = Path("/home/rfh/Documents/MigrAVE/Feldstudie/")
+output = Path("/home/rfh/Documents/MigrAVE/Feldversuche/")
 
 raincloud_target_features(learnstudy, fieldstudy, output_dir=output, feature_names=features)

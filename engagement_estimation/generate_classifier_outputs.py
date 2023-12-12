@@ -688,15 +688,15 @@ def get_result_stats(results_file: Union[Path, str]):
 
 
 class Args:
-    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/fieldstudy_exclude_of_sucess_ros_scalable_label_issues_calibrated"
+    experiment_dir = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated"
     data_dir = "/media/veracrypt1/Feldversuche/qtrobot/MigrAVEProcessed/MigrAVEDaten"
     output_dir = "/media/veracrypt1/Feldversuche/qtrobot/MigrAVEProcessed"
     modalities = ["video", "game"]
-    datasets = ["features_video_right.csv", "features_video_left.csv", "features_video_color.csv"]
-    participant_ids = [1, 11, 19]
+    datasets = ["features_video_right.csv"]
+    participant_ids = [24]
     sessions = None
     classifier_name = "xgboost"
-    label_issue_file = None # "/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_calibrated/video_game/merged_features_video_left_features_video_right_features_video_color_xgboost_cross_validation_issues.csv"
+    label_issue_file = "/home/rfh/Repos/migrave_models/engagement_estimation/logs/fieldstudy_exclude_op_of_sucess_ros_scalable_calibrated/video_game/merged_features_video_left_xgboost_cross_validation_issues_features_video_right_xgboost_cross_validation_issues_features_video_color_xgboost_cross_validation_issues.csv"
     model_participant_id = None # 24
     test_id = None # "fieldstudy"
 
@@ -717,10 +717,10 @@ if __name__ == "__main__":
     # parser.add_argument("-cn", "--classifier_name", required=True, type=str, help="Classifier name")
     # args = parser.parse_args()
     args = Args
-    for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
-        if not Path(parsed_dir).is_dir():
-            print(f"Parsed directory {parsed_dir} does not exist.")
-            sys.exit(0)
+    # for parsed_dir in [args.experiment_dir, args.data_dir, args.output_dir]:
+    #     if not Path(parsed_dir).is_dir():
+    #         print(f"Parsed directory {parsed_dir} does not exist.")
+    #         sys.exit(0)
 
     # classification_vote_df, modalities_id, dataset_voting_id = create_cv_voting_predictions(
     #     experiment_dir=args.experiment_dir, dataset_perspectives=args.datasets,
@@ -733,10 +733,10 @@ if __name__ == "__main__":
     #                          label_issue_file=args.label_issue_file, model_participant_id=args.model_participant_id,
     #                          test_id=args.test_id)
 
-    get_result_stats("/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated/voting_classifier_fieldstudy/video_game_voting_features_video_left_features_video_right_features_video_color_xgboost.csv")
+    # get_result_stats("/home/rfh/Repos/migrave_models/engagement_estimation/logs/fieldstudy_exclude_op_of_sucess_ros_scalable_label_issues_calibrated/voting_classifier/video_game_voting_features_video_left_features_video_right_features_video_color_xgboost.csv")
 
     # generate_prediction_video(experiment_dir=args.experiment_dir, data_dir=args.data_dir, output_dir=args.output_dir,
     #                           modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids,
     #                           sessions=args.sessions, classifier_name=args.classifier_name)
     #
-    # get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)
+    get_xgboost_cv_feature_importance(experiment_dir=args.experiment_dir, modalities=args.modalities, datasets=args.datasets, participant_ids=args.participant_ids)

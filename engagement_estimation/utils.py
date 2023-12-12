@@ -19,6 +19,11 @@ ALLOWED_CLASSIFIERS = ['random_forest', 'xgboost', 'adaboost', 'svm',
                        'knn', 'naive_bayes', 'logistic_regression', "neural_network",
                        "recurrent_neural_network", "hmm", "crf", "catboost", "lightgbm"]
 
+classifiers_report = {'random_forest': "Random-Forest", 'xgboost': "XGBoost", 'adaboost': "ADABoost", 'svm': "Support-Vector-Machine",
+                      'knn': "k-Nearest-Neighbors", 'naive_bayes': "Naive-Bayes", 'logistic_regression': "Logistische Regression",
+                      "neural_network": "Neuronales Netz", "recurrent_neural_network": "Rekurrentes neuronales Netz", "hmm": "Hidden-Markov-Model", "crf": "Conditional-Random-Field",
+                      "catboost": "CatBoost", "lightgbm": "LightGBM"}
+
 SEQUENTIAL_CLASSIFIERS = ["recurrent_neural_network", "hmm", "crf"]
 
 KERAS_CLASSIFIERS = ["recurrent_neural_network", "hmm"]
@@ -407,7 +412,7 @@ def extend_generalized_result(result, participants, p, train_0, train_1, test_0,
     return result
 
 
-def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False):
+def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", show=False, use_report=False):
     """
     Input:
       result: a dictionary containing mean AUROC for each model trained on
@@ -435,7 +440,8 @@ def plot_results(results, cmap_idx=0, name="results", imdir="./logs/images", sho
             ax.pie([100 - means[clf], means[clf]], radius=3 - i * size,
                    colors=[cmap(128), color_gradient[int(means[clf])]], startangle=90,
                    wedgeprops=dict(width=size, edgecolor='w'))
-            legend_names[i + i + 1] = clf + f" ({means[clf]}%)"
+            clf_name = clf if not use_report else classifiers_report[clf]
+            legend_names[i + i + 1] = clf_name + f" ({means[clf]}%)"
 
         ax.set(aspect="equal")
         plt.rcParams['font.size'] = 14
@@ -478,8 +484,8 @@ def plot_from_log(logdir, model_type="generalized", metrics=["AUPRC_0", "AUPRC_1
     for classifier in exclude_classifiers:
         for metric, scores in results.items():
             scores.pop(classifier, None)
-    plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
-
+    plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"), use_report=False)
+# plot_from_log("/home/rfh/Repos/migrave_models/engagement_estimation/logs/exclude_op_of_sucess_ros_scalable_label_issues_calibrated/video_game/features_video_right/", cmap_idx=0)
 
 def plot_balanced_acc_from_log(logdir, model_type="generalized", exclude_classifiers=["catboost"], cmap_idx=0):
     metrics = ["Recall_1", "Recall_0"]
@@ -489,7 +495,6 @@ def plot_balanced_acc_from_log(logdir, model_type="generalized", exclude_classif
             scores.pop(classifier, None)
     results = {"Balanced_Accuracy": {classifier: (results["Recall_1"][classifier] + results["Recall_0"][classifier]) / 2 for classifier in results[metrics[0]].keys()}}
     plot_results(results=results, cmap_idx=cmap_idx, name=model_type, imdir=os.path.join(logdir, "assets"))
-
 
 def plot_summary(logdirs: List[str], out_dir, model_type="generalized",
                  metrics=["Recall_0", "AUPRC_0", "AUROC_0", "Precision_0"]):
